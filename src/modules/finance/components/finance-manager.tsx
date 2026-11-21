@@ -207,13 +207,13 @@ export function FinanceManager({
     <div className="space-y-6 select-none">
       {/* Period View Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-0.5">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-nowrap">
           {(["daily", "monthly", "all_time"] as const).map((view) => (
             <button
               key={view}
               type="button"
               onClick={() => setPeriodView(view)}
-              className={`h-7 px-3 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              className={`h-7 px-3 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
                 periodView === view
                   ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                   : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -284,10 +284,10 @@ export function FinanceManager({
 
       {/* Tabs & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
               activeTab === "overview"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -298,7 +298,7 @@ export function FinanceManager({
           </button>
           <button
             onClick={() => setActiveTab("transactions")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
               activeTab === "transactions"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -309,7 +309,7 @@ export function FinanceManager({
           </button>
           <button
             onClick={() => setActiveTab("savings")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
               activeTab === "savings"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -320,7 +320,7 @@ export function FinanceManager({
           </button>
           <button
             onClick={() => setActiveTab("whatsapp")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 flex-shrink-0 ${
               activeTab === "whatsapp"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -334,7 +334,7 @@ export function FinanceManager({
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {accounts.length > 0 && (
             <button
               onClick={() => setIsAddingTx(!isAddingTx)}

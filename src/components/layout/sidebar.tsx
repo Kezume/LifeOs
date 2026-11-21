@@ -14,8 +14,16 @@ import {
   LineChart,
   Settings,
   LogOut,
+  X,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth/auth-client";
+
+interface SidebarProps {
+  className?: string;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+  onItemClick?: () => void;
+}
 
 interface NavItem {
   label: string;
@@ -91,7 +99,12 @@ const navigationGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  className = "",
+  showCloseButton = false,
+  onClose,
+  onItemClick,
+}: SidebarProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
@@ -103,11 +116,17 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-60 flex-shrink-0 flex flex-col justify-between border-r border-[var(--border)] bg-[var(--surface-deep)] min-h-screen select-none">
+    <aside
+      className={`flex-shrink-0 flex flex-col justify-between border-r border-[var(--border)] bg-[var(--surface-deep)] min-h-screen select-none ${className}`}
+    >
       <div>
         {/* Brand header */}
-        <div className="h-14 flex items-center px-4 border-b border-[var(--border)]">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border)]">
+          <Link
+            href="/dashboard"
+            onClick={onItemClick}
+            className="flex items-center gap-2.5"
+          >
             <span className="w-6 h-6 rounded-md bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-semibold text-xs tracking-tight">
               L
             </span>
@@ -115,6 +134,16 @@ export function Sidebar() {
               LifeOS
             </span>
           </Link>
+
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-raised)] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Navigation items */}
@@ -133,6 +162,7 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={onItemClick}
                       className={`h-[34px] flex items-center gap-2.5 px-2.5 text-xs rounded-lg transition-colors ${
                         isActive
                           ? "bg-[var(--surface-raised)] text-[var(--foreground)] font-medium border border-[var(--border)] shadow-[var(--top-highlight)]"

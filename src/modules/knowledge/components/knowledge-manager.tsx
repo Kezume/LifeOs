@@ -116,7 +116,7 @@ export function KnowledgeManager({
           <span className="text-[10px] font-mono">Tulis ide atau catatan cepat</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <input
             type="text"
             required
@@ -126,34 +126,36 @@ export function KnowledgeManager({
             className="flex-1 h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:border-[var(--border-active)]"
           />
 
-          <select
-            value={captureType}
-            onChange={(e) => setCaptureType(e.target.value as "idea" | "note" | "link" | "task")}
-            className="h-9 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
-          >
-            <option value="idea">Ide</option>
-            <option value="note">Catatan</option>
-            <option value="link">Tautan</option>
-            <option value="task">Tugas</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={captureType}
+              onChange={(e) => setCaptureType(e.target.value as "idea" | "note" | "link" | "task")}
+              className="flex-1 sm:flex-none h-9 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
+            >
+              <option value="idea">Ide</option>
+              <option value="note">Catatan</option>
+              <option value="link">Tautan</option>
+              <option value="task">Tugas</option>
+            </select>
 
-          <button
-            type="submit"
-            disabled={isPending || !captureContent.trim()}
-            className="h-9 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-          >
-            <Send className="w-3 h-3" />
-            <span className="hidden sm:inline">Simpan</span>
-          </button>
+            <button
+              type="submit"
+              disabled={isPending || !captureContent.trim()}
+              className="h-9 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <Send className="w-3 h-3" />
+              <span>Simpan</span>
+            </button>
+          </div>
         </div>
       </form>
 
       {/* Tabs */}
-      <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[var(--border)]">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap">
           <button
             onClick={() => setActiveTab("inbox")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${
               activeTab === "inbox"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -165,7 +167,7 @@ export function KnowledgeManager({
 
           <button
             onClick={() => setActiveTab("notes")}
-            className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`h-7 px-2.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${
               activeTab === "notes"
                 ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -179,7 +181,7 @@ export function KnowledgeManager({
         {activeTab === "notes" && (
           <button
             onClick={() => setIsAddingNote(!isAddingNote)}
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer w-full sm:w-auto"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
             <span>Buat Catatan Baru</span>
@@ -247,7 +249,7 @@ export function KnowledgeManager({
 
                   <button
                     onClick={() => handleDeleteInbox(item.id)}
-                    className="p-1 text-[var(--foreground-muted)] hover:text-[var(--danger)] rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    className="p-1 text-[var(--foreground-muted)] hover:text-[var(--danger)] rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

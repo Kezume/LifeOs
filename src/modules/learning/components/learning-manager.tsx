@@ -140,12 +140,12 @@ export function LearningManager({
     <div className="space-y-5">
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
           {(["skills", "paths", "logs"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
                 activeTab === tab
                   ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                   : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"

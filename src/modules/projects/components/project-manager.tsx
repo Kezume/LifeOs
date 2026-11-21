@@ -116,12 +116,12 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
           {(["all", "active", "completed"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              className={`h-7 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
                 filter === tab
                   ? "bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)]"
                   : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"

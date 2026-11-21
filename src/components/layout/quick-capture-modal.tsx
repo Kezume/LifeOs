@@ -205,10 +205,10 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
-      <div className="w-full max-w-lg bg-[var(--surface-raised)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-[2px]">
+      <div className="w-full max-w-lg max-h-[92vh] bg-[var(--surface-raised)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-deep)]">
+        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-deep)] flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[var(--foreground)]" />
             <h2 className="text-xs font-semibold tracking-tight text-[var(--foreground)] uppercase">
@@ -224,7 +224,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-[var(--border)] bg-[var(--surface-deep)] px-2 pt-1 gap-1">
+        <div className="flex border-b border-[var(--border)] bg-[var(--surface-deep)] px-2 pt-1 gap-1 overflow-x-auto no-scrollbar flex-nowrap flex-shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isCurrent = activeType === tab.id;

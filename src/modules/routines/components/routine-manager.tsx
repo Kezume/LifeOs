@@ -174,7 +174,7 @@ export function RoutineManager({
                 <button
                   onClick={() => handleDelete(routine.id)}
                   title="Hapus Rutinitas"
-                  className="p-1 text-[var(--foreground-muted)] hover:text-[var(--danger)] rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  className="p-1 text-[var(--foreground-muted)] hover:text-[var(--danger)] rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
