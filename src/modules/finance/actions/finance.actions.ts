@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/require-user";
 import { db } from "@/lib/db";
-import { financeAccounts, financeCategories, financeTransactions, savingsGoals } from "@/lib/db/schema";
+import { financeAccounts, financeCategories, financeTransactions, savingsGoals, debts } from "@/lib/db/schema";
 import {
   createAccountSchema,
   createCategorySchema,
@@ -11,12 +11,16 @@ import {
   createSavingsGoalSchema,
   depositToSavingsGoalSchema,
   withdrawFromSavingsGoalSchema,
+  createDebtSchema,
+  payDebtSchema,
   CreateAccountInput,
   CreateCategoryInput,
   CreateTransactionInput,
   CreateSavingsGoalInput,
   DepositToSavingsGoalInput,
   WithdrawFromSavingsGoalInput,
+  CreateDebtInput,
+  PayDebtInput,
 } from "../schemas/finance.schema";
 import { eq, and } from "drizzle-orm";
 
@@ -247,6 +251,98 @@ export async function deleteSavingsGoalAction(goalId: string) {
   await db
     .delete(savingsGoals)
     .where(and(eq(savingsGoals.id, goalId), eq(savingsGoals.userId, user.id)));
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function createDebtAction(data: CreateDebtInput) {
+  const user = await requireUser();
+  const parsed = createDebtSchema.parse(data);
+
+  const [newDebt] = await db
+    .insert(debts)
+    .values({
+      userId: user.id,
+      type: parsed.type,
+      personName: parsed.personName.trim(),
+      amount: parsed.amount,
+      paidAmount: "0",
+      dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
+      status: "unpaid",
+      notes: parsed.notes?.trim() || null,
+    })
+    .returning();
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true, debt: newDebt };
+}
+
+export async function payDebtAction(data: PayDebtInput) {
+  const user = await requireUser();
+  const parsed = payDebtSchema.parse(data);
+
+  const [existingDebt] = await db
+    .select()
+    .from(debts)
+    .where(and(eq(debts.id, parsed.debtId), eq(debts.userId, user.id)))
+    .limit(1);
+
+  if (!existingDebt) {
+    throw new Error("Data utang/piutang tidak ditemukan");
+  }
+
+  const payAmt = Number(parsed.amount);
+  if (isNaN(payAmt) || payAmt <= 0) {
+    throw new Error("Nominal pembayaran tidak valid");
+  }
+
+  const currentPaid = Number(existingDebt.paidAmount || 0);
+  const totalAmount = Number(existingDebt.amount);
+  const newPaidAmount = Math.min(totalAmount, currentPaid + payAmt);
+  const newStatus = newPaidAmount >= totalAmount ? "paid" : "partial";
+
+  // 1. Jika pengguna memilih akun kas, catat transaksi kas otomatis agar saldo dan cashflow terintegrasi
+  if (parsed.accountId) {
+    const isDebt = existingDebt.type === "debt";
+    // debt (utang kita): kita bayar -> expense keluar dari akun
+    // receivable (piutang kita): orang bayar ke kita -> income masuk ke akun
+    await db.insert(financeTransactions).values({
+      userId: user.id,
+      accountId: parsed.accountId,
+      type: isDebt ? "expense" : "income",
+      amount: parsed.amount,
+      description: isDebt
+        ? `Bayar Utang: ${existingDebt.personName}`
+        : `Terima Piutang: ${existingDebt.personName}`,
+      transactionDate: new Date(),
+    });
+  }
+
+  // 2. Perbarui record utang/piutang
+  const [updatedDebt] = await db
+    .update(debts)
+    .set({
+      paidAmount: String(newPaidAmount),
+      status: newStatus,
+      updatedAt: new Date(),
+    })
+    .where(eq(debts.id, existingDebt.id))
+    .returning();
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true, debt: updatedDebt };
+}
+
+export async function deleteDebtAction(debtId: string) {
+  const user = await requireUser();
+
+  await db
+    .delete(debts)
+    .where(and(eq(debts.id, debtId), eq(debts.userId, user.id)));
 
   revalidatePath("/finance");
   revalidatePath("/dashboard");

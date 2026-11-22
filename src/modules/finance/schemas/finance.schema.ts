@@ -40,9 +40,25 @@ export const withdrawFromSavingsGoalSchema = z.object({
   amount: z.string().min(1, "Nominal tidak boleh kosong"),
 });
 
+export const createDebtSchema = z.object({
+  type: z.enum(["debt", "receivable"]), // debt = utang saya, receivable = piutang saya
+  personName: z.string().min(1, "Nama orang/pihak terkait wajib diisi").max(100),
+  amount: z.string().min(1, "Nominal tidak boleh kosong"),
+  dueDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export const payDebtSchema = z.object({
+  debtId: z.string().uuid("ID utang/piutang tidak valid"),
+  amount: z.string().min(1, "Nominal pembayaran tidak boleh kosong"),
+  accountId: z.string().uuid().optional().nullable(),
+});
+
 export type CreateAccountInput = z.input<typeof createAccountSchema>;
 export type CreateCategoryInput = z.input<typeof createCategorySchema>;
 export type CreateTransactionInput = z.input<typeof createTransactionSchema>;
 export type CreateSavingsGoalInput = z.input<typeof createSavingsGoalSchema>;
 export type DepositToSavingsGoalInput = z.input<typeof depositToSavingsGoalSchema>;
 export type WithdrawFromSavingsGoalInput = z.input<typeof withdrawFromSavingsGoalSchema>;
+export type CreateDebtInput = z.input<typeof createDebtSchema>;
+export type PayDebtInput = z.input<typeof payDebtSchema>;

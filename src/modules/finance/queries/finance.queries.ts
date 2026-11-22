@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { financeAccounts, financeCategories, financeTransactions, savingsGoals } from "@/lib/db/schema";
+import { financeAccounts, financeCategories, financeTransactions, savingsGoals, debts } from "@/lib/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
 export async function getUserAccounts(userId: string) {
@@ -104,6 +104,17 @@ export async function getUserSavingsGoals(userId: string) {
     .orderBy(desc(savingsGoals.createdAt));
 }
 
+export async function getUserDebts(userId: string) {
+  return db
+    .select()
+    .from(debts)
+    .where(eq(debts.userId, userId))
+    .orderBy(
+      sql`CASE WHEN ${debts.status} = 'paid' THEN 2 ELSE 1 END`,
+      desc(debts.createdAt)
+    );
+}
+
 export interface CategoryStatItem {
   name: string;
   amount: number;
@@ -146,6 +157,8 @@ export interface FinanceSummary {
   totalSavingsTarget: number;
   totalSavingsCurrent: number;
   savingsProgressRate: number;
+  totalDebtRemaining: number;
+  totalReceivableRemaining: number;
   financialAdvice: FinancialAdvice[];
 }
 
@@ -157,7 +170,7 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
-  const [allTx, savings] = await Promise.all([
+  const [allTx, savings, userDebtsList] = await Promise.all([
     db
       .select({
         id: financeTransactions.id,
@@ -183,6 +196,17 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
       })
       .from(savingsGoals)
       .where(eq(savingsGoals.userId, userId)),
+    db
+      .select({
+        id: debts.id,
+        type: debts.type,
+        amount: debts.amount,
+        paidAmount: debts.paidAmount,
+        dueDate: debts.dueDate,
+        status: debts.status,
+      })
+      .from(debts)
+      .where(eq(debts.userId, userId)),
   ]);
 
   let todayIncome = 0;
@@ -331,6 +355,30 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
     });
   }
 
+  // Utang & Piutang Calculations
+  let totalDebtRemaining = 0;
+  let totalReceivableRemaining = 0;
+
+  userDebtsList.forEach((d) => {
+    const remaining = Math.max(0, Number(d.amount) - Number(d.paidAmount || 0));
+    if (d.status !== "paid" && remaining > 0) {
+      if (d.type === "debt") totalDebtRemaining += remaining;
+      else if (d.type === "receivable") totalReceivableRemaining += remaining;
+    }
+  });
+
+  const overdueDebts = userDebtsList.filter(
+    (d) => d.status !== "paid" && d.type === "debt" && d.dueDate && new Date(d.dueDate) < now
+  );
+  if (overdueDebts.length > 0) {
+    financialAdvice.push({
+      type: "warning",
+      title: "Kewajiban Utang Lewat Tempo",
+      description: `Terdapat ${overdueDebts.length} catatan utang yang telah melewati batas jatuh tempo. Prioritaskan pelunasan untuk menjaga skor finansial Anda.`,
+      metric: `${overdueDebts.length} lewat tempo`,
+    });
+  }
+
   return {
     totalBalance,
     freeBalance,
@@ -356,6 +404,8 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
     totalSavingsTarget,
     totalSavingsCurrent,
     savingsProgressRate,
+    totalDebtRemaining,
+    totalReceivableRemaining,
     financialAdvice,
   };
 }

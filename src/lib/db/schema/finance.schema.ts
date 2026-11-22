@@ -111,6 +111,30 @@ export const userWhatsappConnections = pgTable(
   ]
 );
 
+export const debts = pgTable(
+  "debts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // "debt" (utang saya / saya meminjam) | "receivable" (piutang / orang meminjam ke saya)
+    personName: text("person_name").notNull(),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    paidAmount: numeric("paid_amount", { precision: 18, scale: 2 }).notNull().default("0"),
+    dueDate: timestamp("due_date", { withTimezone: true }),
+    status: text("status").notNull().default("unpaid"), // "unpaid" | "partial" | "paid"
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("debts_user_id_idx").on(table.userId),
+    index("debts_type_idx").on(table.type),
+    index("debts_status_idx").on(table.status),
+  ]
+);
+
 export type FinanceAccount = typeof financeAccounts.$inferSelect;
 export type NewFinanceAccount = typeof financeAccounts.$inferInsert;
 export type FinanceCategory = typeof financeCategories.$inferSelect;
@@ -121,3 +145,5 @@ export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type NewSavingsGoal = typeof savingsGoals.$inferInsert;
 export type UserWhatsappConnection = typeof userWhatsappConnections.$inferSelect;
 export type NewUserWhatsappConnection = typeof userWhatsappConnections.$inferInsert;
+export type Debt = typeof debts.$inferSelect;
+export type NewDebt = typeof debts.$inferInsert;
