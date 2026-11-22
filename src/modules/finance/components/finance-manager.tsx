@@ -136,7 +136,33 @@ export function FinanceManager({
   const [goalActionAmount, setGoalActionAmount] = useState("");
   const [goalActionAccountId, setGoalActionAccountId] = useState(accounts[0]?.id || "");
 
+  // Top-Up / Tambah Saldo State
+  const [topUpAccountId, setTopUpAccountId] = useState<string | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpCategoryId, setTopUpCategoryId] = useState("");
+  const [topUpDescription, setTopUpDescription] = useState("");
+
   const [isPending, startTransition] = useTransition();
+
+  const handleTopUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topUpAccountId || !topUpAmount) return;
+
+    startTransition(async () => {
+      const acc = accounts.find((a) => a.id === topUpAccountId);
+      await createTransactionAction({
+        accountId: topUpAccountId,
+        type: "income",
+        amount: topUpAmount,
+        categoryId: topUpCategoryId || null,
+        description: topUpDescription.trim() || `Tambah Saldo: ${acc?.name || "Akun"}`,
+      });
+      setTopUpAccountId(null);
+      setTopUpAmount("");
+      setTopUpCategoryId("");
+      setTopUpDescription("");
+    });
+  };
 
   const handleCreateTx = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1163,6 +1189,17 @@ export function FinanceManager({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTopUpAccountId(accounts[0]?.id || null);
+                  setTopUpAmount("");
+                }}
+                className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Tambah Saldo</span>
+              </button>
               {accounts.length > 1 && (
                 <button
                   type="button"
@@ -1176,9 +1213,9 @@ export function FinanceManager({
               <button
                 type="button"
                 onClick={() => setIsAddingAccount(true)}
-                className="px-2.5 py-1 text-xs rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] font-medium cursor-pointer flex items-center gap-1.5"
+                className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] font-medium cursor-pointer flex items-center gap-1.5"
               >
-                <Plus className="w-3 h-3" />
+                <Wallet className="w-3 h-3 text-[var(--foreground-muted)]" />
                 <span>Tambah Akun</span>
               </button>
             </div>
@@ -1193,30 +1230,105 @@ export function FinanceManager({
               accounts.map((acc) => (
                 <div
                   key={acc.id}
-                  className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2.5"
+                  className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--foreground)]">{acc.name}</span>
-                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                    <span className="text-xs font-semibold text-[var(--foreground)]">{acc.name}</span>
+                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
                       {acc.accountType}
                     </span>
                   </div>
-                  <div className="text-lg font-medium tracking-tight text-[var(--foreground)] tabular-nums">
+                  <div className="text-xl font-medium tracking-tight text-[var(--foreground)] tabular-nums">
                     {formatIDR(acc.currentBalance)}
                   </div>
-                  <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between text-[10px] text-[var(--foreground-muted)] font-mono">
-                    <span>Saldo Pembukuan Aktif</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTransferFromAccountId(acc.id);
-                        setIsTransferring(true);
-                      }}
-                      className="text-blue-500 hover:underline cursor-pointer"
-                    >
-                      Transfer dari sini →
-                    </button>
-                  </div>
+
+                  {/* Inline Top-Up Form */}
+                  {topUpAccountId === acc.id ? (
+                    <form onSubmit={handleTopUp} className="pt-2 border-t border-[var(--border)] space-y-2 text-xs">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-[var(--foreground)]">
+                        <span>Tambah Saldo: {acc.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setTopUpAccountId(null)}
+                          className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <input
+                          type="number"
+                          required
+                          autoFocus
+                          value={topUpAmount}
+                          onChange={(e) => setTopUpAmount(e.target.value)}
+                          placeholder="Nominal saldo (Rp)..."
+                          className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                        />
+                        <select
+                          value={topUpCategoryId}
+                          onChange={(e) => setTopUpCategoryId(e.target.value)}
+                          className="w-full h-8 px-2 text-xs rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                        >
+                          <option value="">Pilih Kategori Pemasukan (Opsional)</option>
+                          {categories
+                            .filter((c) => c.type === "income")
+                            .map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </option>
+                            ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={topUpDescription}
+                          onChange={(e) => setTopUpDescription(e.target.value)}
+                          placeholder="Keterangan (misal: Setor Tunai, Gaji, Top Up)..."
+                          className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          type="submit"
+                          disabled={isPending || !topUpAmount}
+                          className="h-7 px-3 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                        >
+                          Konfirmasi Setor Saldo
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="pt-2.5 border-t border-[var(--border)]/50 flex items-center justify-between text-xs font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTopUpAccountId(acc.id);
+                          setTopUpAmount("");
+                          setTopUpDescription("");
+                        }}
+                        className="h-7 px-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1.5 text-[11px]"
+                      >
+                        <Plus className="w-3 h-3 text-emerald-500" />
+                        <span>Tambah Saldo</span>
+                      </button>
+
+                      {accounts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTransferFromAccountId(acc.id);
+                            setIsTransferring(true);
+                          }}
+                          className="h-7 px-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1.5 text-[11px]"
+                        >
+                          <ArrowRightLeft className="w-3 h-3 text-blue-500" />
+                          <span>Transfer</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
