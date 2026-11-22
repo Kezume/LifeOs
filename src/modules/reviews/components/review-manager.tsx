@@ -73,34 +73,34 @@ export function ReviewManager({
 
   const reviewDonutSegments: DonutSegment[] = [
     {
-      name: "Tugas Tuntas",
-      value: Math.max(1, overallStats.tasks.completed),
+      name: "Tugas & Rutinitas",
+      value: Math.max(1, overallStats.tasks.total + overallStats.routines.total),
       color: "var(--domain-life)",
-      formattedValue: `${overallStats.tasks.completed} tugas`,
+      formattedValue: `${overallStats.tasks.completed}/${overallStats.tasks.total} tuntas`,
     },
     {
-      name: "Habit Streak",
-      value: Math.max(1, overallStats.routines.streakDays),
-      color: "var(--warning)",
-      formattedValue: `${overallStats.routines.streakDays} hari`,
+      name: "Proyek Kerja",
+      value: Math.max(1, overallStats.projects.total),
+      color: "var(--domain-work)",
+      formattedValue: `${overallStats.projects.active} aktif · ${overallStats.projects.completed} selesai`,
     },
     {
-      name: "Waktu Belajar",
+      name: "Belajar & Skill",
       value: Math.max(1, Math.round(overallStats.learning.totalHours * 2) || 1),
       color: "var(--domain-learning)",
-      formattedValue: `${overallStats.learning.totalHours} jam`,
+      formattedValue: `${overallStats.learning.totalHours} jam belajar`,
     },
     {
-      name: "Target Tercapai",
-      value: Math.max(1, overallStats.goals.completed),
+      name: "Second Brain",
+      value: Math.max(1, overallStats.knowledge.totalNotes + overallStats.knowledge.inboxCount),
+      color: "var(--domain-knowledge)",
+      formattedValue: `${overallStats.knowledge.totalNotes} catatan`,
+    },
+    {
+      name: "Target Hidup",
+      value: Math.max(1, overallStats.goals.total),
       color: "var(--domain-goals)",
-      formattedValue: `${overallStats.goals.completed} target`,
-    },
-    {
-      name: "Proyek Selesai",
-      value: Math.max(1, overallStats.projects.completed),
-      color: "var(--domain-work)",
-      formattedValue: `${overallStats.projects.completed} proyek`,
+      formattedValue: `${overallStats.goals.completed}/${overallStats.goals.total} tercapai`,
     },
   ];
 
@@ -208,8 +208,8 @@ export function ReviewManager({
         <div className="w-full lg:w-auto flex justify-center">
           <DonutChart
             segments={reviewDonutSegments}
-            centerLabel={`${overallStats.tasks.completionRate}%`}
-            centerSublabel="Tingkat Sukses"
+            centerLabel={`Lvl ${overallStats.gamification.level}`}
+            centerSublabel={`${overallStats.gamification.totalXp} XP`}
             size={160}
             strokeWidth={16}
             showLegend={true}

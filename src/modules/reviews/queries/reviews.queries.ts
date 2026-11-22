@@ -6,6 +6,7 @@ import { getRoutineStats } from "@/modules/routines/queries/routine.queries";
 import { getLearningStats } from "@/modules/learning/queries/learning.queries";
 import { getGoalStats } from "@/modules/goals/queries/goals.queries";
 import { getProjectStats } from "@/modules/projects/queries/project.queries";
+import { getKnowledgeStats } from "@/modules/knowledge/queries/knowledge.queries";
 import { getGamificationProfile } from "@/modules/gamification/queries/gamification.queries";
 
 export interface LifeReviewOverallStats {
@@ -36,6 +37,10 @@ export interface LifeReviewOverallStats {
     total: number;
     active: number;
     completed: number;
+  };
+  knowledge: {
+    totalNotes: number;
+    inboxCount: number;
   };
   gamification: {
     level: number;
@@ -85,6 +90,7 @@ export async function getLifeReviewStats(userId: string): Promise<LifeReviewOver
     learningStats,
     goalStats,
     projectStats,
+    knowledgeStats,
     gamification,
   ] = await Promise.all([
     db.select().from(lifeReviews).where(eq(lifeReviews.userId, userId)),
@@ -93,6 +99,7 @@ export async function getLifeReviewStats(userId: string): Promise<LifeReviewOver
     getLearningStats(userId),
     getGoalStats(userId),
     getProjectStats(userId),
+    getKnowledgeStats(userId),
     getGamificationProfile(userId),
   ]);
 
@@ -114,6 +121,10 @@ export async function getLifeReviewStats(userId: string): Promise<LifeReviewOver
       completionRate: goalCompletionRate,
     },
     projects: projectStats,
+    knowledge: {
+      totalNotes: knowledgeStats.totalNotes,
+      inboxCount: knowledgeStats.inboxCount,
+    },
     gamification: {
       level: gamification.level,
       levelTitle: gamification.levelTitle,

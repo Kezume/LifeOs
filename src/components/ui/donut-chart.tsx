@@ -121,7 +121,7 @@ export function DonutChart({
       {showLegend && (
         <div
           className={`flex flex-col gap-1.5 w-full ${
-            legendPosition === "right" ? "sm:max-w-[220px]" : "max-w-full"
+            legendPosition === "right" ? "sm:max-w-[300px]" : "max-w-full"
           }`}
         >
           {arcs.length === 0 ? (
