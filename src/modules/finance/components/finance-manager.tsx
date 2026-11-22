@@ -99,6 +99,9 @@ interface DebtItem {
   paidInstallments?: number;
   installmentAmount?: string | null;
   dueDay?: number | null;
+  interestType?: string | null; // "none" | "percentage_monthly" | "fixed_amount"
+  interestRate?: string | null;
+  interestAmount?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -141,6 +144,9 @@ export function FinanceManager({
   const [debtTotalInstallments, setDebtTotalInstallments] = useState("3");
   const [debtInstallmentAmount, setDebtInstallmentAmount] = useState("");
   const [debtDueDay, setDebtDueDay] = useState("25");
+  const [debtInterestType, setDebtInterestType] = useState<"none" | "percentage_monthly" | "fixed_amount">("none");
+  const [debtInterestRate, setDebtInterestRate] = useState("");
+  const [debtFixedInterest, setDebtFixedInterest] = useState("");
 
   const [activePayDebt, setActivePayDebt] = useState<DebtItem | null>(null);
   const [payDebtAmount, setPayDebtAmount] = useState("");
@@ -347,6 +353,9 @@ export function FinanceManager({
         totalInstallments: debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1,
         installmentAmount: debtIsInstallment && debtInstallmentAmount ? debtInstallmentAmount : null,
         dueDay: debtIsInstallment && debtDueDay ? parseInt(debtDueDay) : null,
+        interestType: debtInterestType,
+        interestRate: debtInterestType === "percentage_monthly" ? debtInterestRate : null,
+        interestAmount: debtInterestType === "fixed_amount" ? debtFixedInterest : null,
       });
       setIsAddingDebt(false);
       setDebtPersonName("");
@@ -357,6 +366,9 @@ export function FinanceManager({
       setDebtTotalInstallments("3");
       setDebtInstallmentAmount("");
       setDebtDueDay("25");
+      setDebtInterestType("none");
+      setDebtInterestRate("");
+      setDebtFixedInterest("");
     });
   };
 
@@ -2069,9 +2081,16 @@ export function FinanceManager({
                     type="button"
                     onClick={() => {
                       setDebtIsInstallment(true);
-                      if (debtAmount && (!debtInstallmentAmount || debtInstallmentAmount === "0")) {
-                        const m = parseInt(debtTotalInstallments) || 3;
-                        setDebtInstallmentAmount(String(Math.round(Number(debtAmount) / m)));
+                      const p = Number(debtAmount) || 0;
+                      const m = parseInt(debtTotalInstallments) || 3;
+                      let intr = 0;
+                      if (debtInterestType === "percentage_monthly" && debtInterestRate) {
+                        intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                      } else if (debtInterestType === "fixed_amount" && debtFixedInterest) {
+                        intr = Math.round(Number(debtFixedInterest) || 0);
+                      }
+                      if (p > 0) {
+                        setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
                       }
                     }}
                     className={`h-6 px-2.5 text-[11px] rounded cursor-pointer transition-colors ${
@@ -2103,7 +2122,7 @@ export function FinanceManager({
 
                 <div>
                   <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
-                    {debtIsInstallment ? "Total Pokok Pinjaman (Rp)" : "Nominal (Rp)"}
+                    {debtIsInstallment ? "Total Pokok Pinjaman (Rp)" : "Nominal Pokok (Rp)"}
                   </label>
                   <input
                     type="number"
@@ -2113,7 +2132,15 @@ export function FinanceManager({
                       const val = e.target.value;
                       setDebtAmount(val);
                       if (debtIsInstallment && parseInt(debtTotalInstallments) > 0) {
-                        setDebtInstallmentAmount(String(Math.round(Number(val) / parseInt(debtTotalInstallments))));
+                        const p = Number(val) || 0;
+                        const m = parseInt(debtTotalInstallments) || 1;
+                        let intr = 0;
+                        if (debtInterestType === "percentage_monthly" && debtInterestRate) {
+                          intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                        } else if (debtInterestType === "fixed_amount" && debtFixedInterest) {
+                          intr = Math.round(Number(debtFixedInterest) || 0);
+                        }
+                        setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
                       }
                     }}
                     placeholder="Nominal pinjaman..."
@@ -2145,6 +2172,154 @@ export function FinanceManager({
                 </div>
               </div>
 
+              {/* Bunga & Biaya Layanan */}
+              <div className="p-3 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-medium text-[var(--foreground)] block">Bunga Pinjaman</span>
+                    <span className="text-[10px] text-[var(--foreground-muted)]">
+                      Atur persentase bunga flat per bulan (pinjol/kredit) atau nominal bunga tetap
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {(
+                      [
+                        { type: "none", label: "Tanpa Bunga (0%)" },
+                        { type: "percentage_monthly", label: "% per Bulan (Flat)" },
+                        { type: "fixed_amount", label: "Nominal Tetap (Rp)" },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.type}
+                        type="button"
+                        onClick={() => {
+                          setDebtInterestType(item.type);
+                          const p = Number(debtAmount) || 0;
+                          const m = debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1;
+                          let intr = 0;
+                          if (item.type === "percentage_monthly" && debtInterestRate) {
+                            intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                          } else if (item.type === "fixed_amount" && debtFixedInterest) {
+                            intr = Math.round(Number(debtFixedInterest) || 0);
+                          }
+                          if (debtIsInstallment && p > 0) {
+                            setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
+                          }
+                        }}
+                        className={`h-6 px-2.5 text-[11px] rounded cursor-pointer transition-colors ${
+                          debtInterestType === item.type
+                            ? "bg-[var(--surface-card)] text-amber-500 font-semibold border border-amber-500/30 shadow-xs"
+                            : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {debtInterestType === "percentage_monthly" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                        Suku Bunga per Bulan (% flat)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={debtInterestRate}
+                          onChange={(e) => {
+                            const r = e.target.value;
+                            setDebtInterestRate(r);
+                            const p = Number(debtAmount) || 0;
+                            const m = debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1;
+                            const intr = Math.round(p * ((Number(r) || 0) / 100) * m);
+                            if (debtIsInstallment && p > 0) {
+                              setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
+                            }
+                          }}
+                          placeholder="Contoh: 1.5, 2.5..."
+                          className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                        />
+                        <span className="text-xs font-mono text-[var(--foreground-muted)]">%</span>
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[var(--surface-card)] border border-[var(--border)] flex flex-col justify-center text-[11px]">
+                      <span className="text-[10px] text-[var(--foreground-muted)] font-mono">Simulasi Total Bunga:</span>
+                      <span className="font-semibold text-amber-500 font-mono">
+                        +{formatIDR(
+                          Math.round(
+                            (Number(debtAmount) || 0) *
+                              ((Number(debtInterestRate) || 0) / 100) *
+                              (debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1)
+                          )
+                        )}
+                        <span className="text-[10px] text-[var(--foreground-muted)] font-normal ml-1">
+                          ({debtInterestRate || 0}% x {debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1} bln)
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {debtInterestType === "fixed_amount" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                        Nominal Bunga / Biaya Layanan Tetap (Rp)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={debtFixedInterest}
+                        onChange={(e) => {
+                          const f = e.target.value;
+                          setDebtFixedInterest(f);
+                          const p = Number(debtAmount) || 0;
+                          const m = debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1;
+                          const intr = Number(f) || 0;
+                          if (debtIsInstallment && p > 0) {
+                            setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
+                          }
+                        }}
+                        placeholder="Contoh: 150000"
+                        className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                      />
+                    </div>
+                    <div className="p-2 rounded bg-[var(--surface-card)] border border-[var(--border)] flex flex-col justify-center text-[11px]">
+                      <span className="text-[10px] text-[var(--foreground-muted)] font-mono">Total Bunga Tetap:</span>
+                      <span className="font-semibold text-amber-500 font-mono">
+                        +{formatIDR(Number(debtFixedInterest) || 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ringkasan Pokok + Bunga */}
+                {Number(debtAmount) > 0 && (
+                  <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]/50 text-[11px] font-mono">
+                    <span className="text-[var(--foreground-muted)]">Total Pengembalian:</span>
+                    <span className="font-semibold text-[var(--foreground)] tabular-nums">
+                      {(() => {
+                        const p = Number(debtAmount) || 0;
+                        const m = debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1;
+                        let intr = 0;
+                        if (debtInterestType === "percentage_monthly" && debtInterestRate) {
+                          intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                        } else if (debtInterestType === "fixed_amount" && debtFixedInterest) {
+                          intr = Math.round(Number(debtFixedInterest) || 0);
+                        }
+                        return `${formatIDR(p + intr)} ${
+                          intr > 0 ? `(Pokok ${formatIDR(p)} + Bunga ${formatIDR(intr)})` : ""
+                        }`;
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Pengaturan Cicilan Bulanan */}
               {debtIsInstallment && (
                 <div className="p-3 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -2160,8 +2335,16 @@ export function FinanceManager({
                       onChange={(e) => {
                         const val = e.target.value;
                         setDebtTotalInstallments(val);
-                        if (debtAmount && parseInt(val) > 0) {
-                          setDebtInstallmentAmount(String(Math.round(Number(debtAmount) / parseInt(val))));
+                        const m = Math.max(1, parseInt(val) || 1);
+                        const p = Number(debtAmount) || 0;
+                        let intr = 0;
+                        if (debtInterestType === "percentage_monthly" && debtInterestRate) {
+                          intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                        } else if (debtInterestType === "fixed_amount" && debtFixedInterest) {
+                          intr = Math.round(Number(debtFixedInterest) || 0);
+                        }
+                        if (p > 0) {
+                          setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
                         }
                       }}
                       placeholder="Contoh: 3, 6, 12..."
@@ -2178,13 +2361,19 @@ export function FinanceManager({
                         <button
                           type="button"
                           onClick={() => {
-                            setDebtInstallmentAmount(
-                              String(Math.round(Number(debtAmount) / parseInt(debtTotalInstallments)))
-                            );
+                            const p = Number(debtAmount) || 0;
+                            const m = Math.max(1, parseInt(debtTotalInstallments) || 1);
+                            let intr = 0;
+                            if (debtInterestType === "percentage_monthly" && debtInterestRate) {
+                              intr = Math.round(p * ((Number(debtInterestRate) || 0) / 100) * m);
+                            } else if (debtInterestType === "fixed_amount" && debtFixedInterest) {
+                              intr = Math.round(Number(debtFixedInterest) || 0);
+                            }
+                            setDebtInstallmentAmount(String(Math.round((p + intr) / m)));
                           }}
                           className="text-[9px] text-blue-500 hover:underline cursor-pointer"
                         >
-                          Hitung Rata
+                          Hitung Rata (Pokok+Bunga)
                         </button>
                       )}
                     </div>
@@ -2243,125 +2432,144 @@ export function FinanceManager({
               onSubmit={handlePayDebt}
               className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
-                <div>
-                  <h3 className="text-xs font-semibold text-[var(--foreground)]">
-                    {activePayDebt.type === "debt" ? "Bayar Cicilan / Utang ke " : "Terima Pembayaran Piutang dari "}
-                    <span className="text-blue-500">{activePayDebt.personName}</span>
-                  </h3>
-                  <div className="flex items-center gap-2 text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                    {activePayDebt.isInstallment && (
-                      <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-500 font-mono text-[10px] border border-blue-500/20">
-                        Cicilan ke-{(activePayDebt.paidInstallments || 0) + 1} dari {activePayDebt.totalInstallments}
+              {(() => {
+                const payPrincipal = Number(activePayDebt.amount);
+                const payInterest = Number(activePayDebt.interestAmount || 0);
+                const payTotalPayable = payPrincipal + payInterest;
+                const payRemaining = Math.max(0, payTotalPayable - Number(activePayDebt.paidAmount || 0));
+                const payRemainingTenor = Math.max(1, (activePayDebt.totalInstallments || 1) - (activePayDebt.paidInstallments || 0));
+                const payCycleBill = Number(activePayDebt.installmentAmount || Math.round(payRemaining / payRemainingTenor));
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                      <div>
+                        <h3 className="text-xs font-semibold text-[var(--foreground)]">
+                          {activePayDebt.type === "debt" ? "Bayar Cicilan / Utang ke " : "Terima Pembayaran Piutang dari "}
+                          <span className="text-blue-500">{activePayDebt.personName}</span>
+                        </h3>
+                        <div className="flex items-center gap-2 text-[11px] text-[var(--foreground-muted)] mt-0.5 flex-wrap">
+                          {activePayDebt.isInstallment && (
+                            <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-500 font-mono text-[10px] border border-blue-500/20">
+                              Cicilan ke-{(activePayDebt.paidInstallments || 0) + 1} dari {activePayDebt.totalInstallments}
+                            </span>
+                          )}
+                          {payInterest > 0 && (
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 font-mono text-[10px] border border-amber-500/20">
+                              Bunga: {formatIDR(payInterest)}
+                            </span>
+                          )}
+                          <span>
+                            Sisa tagihan:{" "}
+                            <span className="font-mono font-medium text-[var(--foreground)] tabular-nums">
+                              {formatIDR(payRemaining)}
+                            </span>
+                            {payInterest > 0 && (
+                              <span className="text-[10px] text-[var(--foreground-muted)] ml-1">
+                                (Total {formatIDR(payTotalPayable)})
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActivePayDebt(null)}
+                        className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+
+                    {/* Tombol Isi Cepat */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-[var(--foreground-muted)] font-mono">Pilihan Cepat:</span>
+                      {activePayDebt.isInstallment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayDebtAmount(String(Math.min(payRemaining, payCycleBill)));
+                          }}
+                          className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-blue-500 hover:text-[var(--foreground)] cursor-pointer"
+                        >
+                          1x Cicilan Bulan Ini ({formatIDR(Math.min(payRemaining, payCycleBill))})
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPayDebtAmount(String(payRemaining));
+                        }}
+                        className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-emerald-500 hover:text-[var(--foreground)] cursor-pointer"
+                      >
+                        Pelunasan Penuh ({formatIDR(payRemaining)})
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                          Nominal Pembayaran (Rp)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          autoFocus
+                          value={payDebtAmount}
+                          onChange={(e) => setPayDebtAmount(e.target.value)}
+                          placeholder="Masukkan nominal yang dibayar..."
+                          className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                          Sinkronkan dengan Rekening Kas (Opsional)
+                        </label>
+                        <select
+                          value={payDebtAccountId}
+                          onChange={(e) => setPayDebtAccountId(e.target.value)}
+                          className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                        >
+                          <option value="">Jangan potong/tambah saldo kas</option>
+                          {accounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.name} ({formatIDR(acc.currentBalance)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-[var(--foreground-muted)] font-mono">
+                        {payDebtAccountId
+                          ? activePayDebt.type === "debt"
+                            ? "Saldo rekening akan otomatis berkurang (pengeluaran)."
+                            : "Saldo rekening akan otomatis bertambah (pemasukan)."
+                          : "Hanya memperbarui status utang/piutang tanpa memengaruhi rekening kas."}
                       </span>
-                    )}
-                    <span>
-                      Sisa tagihan:{" "}
-                      <span className="font-mono font-medium text-[var(--foreground)] tabular-nums">
-                        {formatIDR(Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0)))}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActivePayDebt(null)}
-                  className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
 
-              {/* Tombol Isi Cepat */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-[var(--foreground-muted)] font-mono">Pilihan Cepat:</span>
-                {activePayDebt.isInstallment && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const remaining = Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0));
-                      const remainingTenor = Math.max(1, (activePayDebt.totalInstallments || 1) - (activePayDebt.paidInstallments || 0));
-                      const cycleBill = Number(activePayDebt.installmentAmount || Math.round(remaining / remainingTenor));
-                      setPayDebtAmount(String(Math.min(remaining, cycleBill)));
-                    }}
-                    className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-blue-500 hover:text-[var(--foreground)] cursor-pointer"
-                  >
-                    1x Cicilan Bulan Ini
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const remaining = Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0));
-                    setPayDebtAmount(String(remaining));
-                  }}
-                  className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-emerald-500 hover:text-[var(--foreground)] cursor-pointer"
-                >
-                  Pelunasan Penuh ({formatIDR(Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0)))})
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
-                    Nominal Pembayaran (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    autoFocus
-                    value={payDebtAmount}
-                    onChange={(e) => setPayDebtAmount(e.target.value)}
-                    placeholder="Masukkan nominal yang dibayar..."
-                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
-                    Sinkronkan dengan Rekening Kas (Opsional)
-                  </label>
-                  <select
-                    value={payDebtAccountId}
-                    onChange={(e) => setPayDebtAccountId(e.target.value)}
-                    className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-                  >
-                    <option value="">Jangan potong/tambah saldo kas</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name} ({formatIDR(acc.currentBalance)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[10px] text-[var(--foreground-muted)] font-mono">
-                  {payDebtAccountId
-                    ? activePayDebt.type === "debt"
-                      ? "Saldo rekening akan otomatis berkurang (pengeluaran)."
-                      : "Saldo rekening akan otomatis bertambah (pemasukan)."
-                    : "Hanya memperbarui status utang/piutang tanpa memengaruhi rekening kas."}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActivePayDebt(null)}
-                    className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isPending || !payDebtAmount}
-                    className="h-8 px-3.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                  >
-                    Konfirmasi Pembayaran
-                  </button>
-                </div>
-              </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setActivePayDebt(null)}
+                          className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isPending || !payDebtAmount}
+                          className="h-8 px-3.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                        >
+                          Konfirmasi Pembayaran
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </form>
           )}
 
@@ -2405,10 +2613,12 @@ export function FinanceManager({
               </div>
             ) : (
               filteredDebts.map((item) => {
-                const totalAmt = Number(item.amount);
+                const principal = Number(item.amount);
+                const totalInterest = Number(item.interestAmount || 0);
+                const totalPayable = principal + totalInterest;
                 const paidAmt = Number(item.paidAmount || 0);
-                const remaining = Math.max(0, totalAmt - paidAmt);
-                const pct = totalAmt > 0 ? Math.min(100, Math.round((paidAmt / totalAmt) * 100)) : 0;
+                const remaining = Math.max(0, totalPayable - paidAmt);
+                const pct = totalPayable > 0 ? Math.min(100, Math.round((paidAmt / totalPayable) * 100)) : 0;
                 const isDebt = item.type === "debt";
                 const isPaid = item.status === "paid" || remaining === 0;
 
@@ -2443,6 +2653,16 @@ export function FinanceManager({
                         </span>
 
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {item.interestType === "percentage_monthly" && Number(item.interestRate) > 0 && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                              Bunga {item.interestRate}%/bln
+                            </span>
+                          )}
+                          {item.interestType === "fixed_amount" && totalInterest > 0 && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                              Bunga Tetap
+                            </span>
+                          )}
                           {isInstallment && (
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
                               {paidTenor}/{totalTenor} Bln
@@ -2499,7 +2719,7 @@ export function FinanceManager({
                       <div>
                         <div className="flex items-baseline justify-between">
                           <span className="text-[10px] text-[var(--foreground-muted)]">
-                            {isInstallment ? "Sisa Total Pokok Pinjaman" : "Sisa Tagihan"}
+                            {isInstallment ? "Sisa Total Tagihan" : "Sisa Tagihan"}
                           </span>
                           <span className="text-[10px] font-mono text-[var(--foreground-muted)]">
                             {pct}% terbayar
@@ -2509,7 +2729,15 @@ export function FinanceManager({
                           {formatIDR(remaining)}
                         </div>
                         <div className="text-[10px] font-mono text-[var(--foreground-muted)] mt-0.5">
-                          Total Pinjaman: {formatIDR(totalAmt)} · Terbayar: {formatIDR(paidAmt)}
+                          {totalInterest > 0 ? (
+                            <>
+                              Pokok: {formatIDR(principal)} · Bunga: {formatIDR(totalInterest)} · Total: {formatIDR(totalPayable)} · Terbayar: {formatIDR(paidAmt)}
+                            </>
+                          ) : (
+                            <>
+                              Total Pinjaman: {formatIDR(principal)} · Terbayar: {formatIDR(paidAmt)}
+                            </>
+                          )}
                         </div>
                       </div>
 

@@ -210,6 +210,9 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
         paidInstallments: debts.paidInstallments,
         installmentAmount: debts.installmentAmount,
         dueDay: debts.dueDay,
+        interestType: debts.interestType,
+        interestRate: debts.interestRate,
+        interestAmount: debts.interestAmount,
       })
       .from(debts)
       .where(eq(debts.userId, userId)),
@@ -367,7 +370,11 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
   let monthlyInstallmentDue = 0;
 
   userDebtsList.forEach((d) => {
-    const remaining = Math.max(0, Number(d.amount) - Number(d.paidAmount || 0));
+    const totalPrincipal = Number(d.amount);
+    const totalInterest = Number(d.interestAmount || 0);
+    const totalPayable = totalPrincipal + totalInterest;
+    const remaining = Math.max(0, totalPayable - Number(d.paidAmount || 0));
+
     if (d.status !== "paid" && remaining > 0) {
       if (d.type === "debt") {
         totalDebtRemaining += remaining;

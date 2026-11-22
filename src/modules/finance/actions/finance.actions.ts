@@ -261,11 +261,27 @@ export async function createDebtAction(data: CreateDebtInput) {
   const user = await requireUser();
   const parsed = createDebtSchema.parse(data);
 
+  const principal = Number(parsed.amount);
+  const months = parsed.isInstallment ? (parsed.totalInstallments || 1) : 1;
+  let computedInterest = 0;
+
+  if (parsed.interestType === "percentage_monthly" && parsed.interestRate) {
+    const rate = Number(parsed.interestRate);
+    if (!isNaN(rate) && rate > 0) {
+      computedInterest = Math.round(principal * (rate / 100) * months);
+    }
+  } else if (parsed.interestType === "fixed_amount" && parsed.interestAmount) {
+    const fixed = Number(parsed.interestAmount);
+    if (!isNaN(fixed) && fixed > 0) {
+      computedInterest = Math.round(fixed);
+    }
+  }
+
+  const totalPayable = principal + computedInterest;
+
   let installmentAmt = parsed.installmentAmount;
-  if (parsed.isInstallment && !installmentAmt) {
-    const total = Number(parsed.amount);
-    const months = parsed.totalInstallments || 1;
-    installmentAmt = String(Math.round(total / months));
+  if (parsed.isInstallment && (!installmentAmt || installmentAmt === "0")) {
+    installmentAmt = String(Math.round(totalPayable / months));
   }
 
   // Jika dueDate tidak diisi tapi dueDay diisi, hitung tanggal jatuh tempo siklus pertama
@@ -294,6 +310,9 @@ export async function createDebtAction(data: CreateDebtInput) {
       paidInstallments: 0,
       installmentAmount: parsed.isInstallment ? installmentAmt : null,
       dueDay: parsed.dueDay || null,
+      interestType: parsed.interestType || "none",
+      interestRate: parsed.interestRate || null,
+      interestAmount: String(computedInterest),
     })
     .returning();
 
@@ -322,9 +341,12 @@ export async function payDebtAction(data: PayDebtInput) {
   }
 
   const currentPaid = Number(existingDebt.paidAmount || 0);
-  const totalAmount = Number(existingDebt.amount);
-  const newPaidAmount = Math.min(totalAmount, currentPaid + payAmt);
-  const isFullyPaid = newPaidAmount >= totalAmount;
+  const totalPrincipal = Number(existingDebt.amount);
+  const totalInterest = Number(existingDebt.interestAmount || 0);
+  const totalPayable = totalPrincipal + totalInterest;
+
+  const newPaidAmount = Math.min(totalPayable, currentPaid + payAmt);
+  const isFullyPaid = newPaidAmount >= totalPayable;
 
   // Hitung siklus cicilan baru jika skema cicilan
   let newPaidInstallments = existingDebt.paidInstallments || 0;

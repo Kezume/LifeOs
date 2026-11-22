@@ -50,6 +50,9 @@ export const createDebtSchema = z.object({
   totalInstallments: z.number().int().min(1).optional().default(1),
   installmentAmount: z.string().optional().nullable(),
   dueDay: z.number().int().min(1).max(31).optional().nullable(),
+  interestType: z.enum(["none", "percentage_monthly", "fixed_amount"]).optional().default("none"),
+  interestRate: z.string().optional().nullable(),
+  interestAmount: z.string().optional().nullable(),
 });
 
 export const payDebtSchema = z.object({

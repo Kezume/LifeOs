@@ -130,6 +130,9 @@ export const debts = pgTable(
     paidInstallments: integer("paid_installments").notNull().default(0),
     installmentAmount: numeric("installment_amount", { precision: 18, scale: 2 }),
     dueDay: integer("due_day"),
+    interestType: text("interest_type").notNull().default("none"), // "none" | "percentage_monthly" | "fixed_amount"
+    interestRate: numeric("interest_rate", { precision: 5, scale: 2 }),
+    interestAmount: numeric("interest_amount", { precision: 18, scale: 2 }).notNull().default("0"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
