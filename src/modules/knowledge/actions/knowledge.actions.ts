@@ -126,3 +126,38 @@ export async function deleteNoteAction(id: string) {
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+export async function convertInboxToNoteAction(inboxId: string, title?: string) {
+  const user = await requireUser();
+  const [inbox] = await db
+    .select()
+    .from(inboxItems)
+    .where(and(eq(inboxItems.id, inboxId), eq(inboxItems.userId, user.id)))
+    .limit(1);
+
+  if (!inbox) return { success: false, error: "Item tidak ditemukan" };
+
+  const finalTitle = title?.trim() || inbox.title || inbox.content.slice(0, 40) + (inbox.content.length > 40 ? "..." : "");
+
+  const [newNote] = await db
+    .insert(notes)
+    .values({
+      userId: user.id,
+      title: finalTitle,
+      content: inbox.content,
+    })
+    .returning();
+
+  await db
+    .update(inboxItems)
+    .set({
+      status: "processed",
+      processedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(inboxItems.id, inboxId), eq(inboxItems.userId, user.id)));
+
+  revalidatePath("/knowledge");
+  revalidatePath("/dashboard");
+  return { success: true, note: newNote };
+}

@@ -30,14 +30,14 @@ export default async function KnowledgePage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="flex items-center gap-2">
-          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-0.5 sm:pb-0">
+          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs flex-shrink-0">
             <span className="text-[var(--foreground-muted)]">Inbox:</span>
             <span className="font-medium font-mono tabular-nums text-[var(--foreground)]">
               {stats.inboxCount} item
             </span>
           </div>
-          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs">
+          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs flex-shrink-0">
             <span className="text-[var(--foreground-muted)]">Catatan:</span>
             <span className="font-medium font-mono tabular-nums text-[var(--foreground)]">
               {stats.totalNotes} catatan
