@@ -910,24 +910,6 @@ export function FinanceManager({
               <span>Catat Transaksi</span>
             </button>
           )}
-
-          {accounts.length > 1 && (
-            <button
-              onClick={() => setIsTransferring(!isTransferring)}
-              className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-1 sm:flex-none"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
-              <span>Transfer</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setIsAddingAccount(!isAddingAccount)}
-            className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-1 sm:flex-none"
-          >
-            <Wallet className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-            <span>Tambah Akun</span>
-          </button>
         </div>
       </div>
 
@@ -1028,153 +1010,6 @@ export function FinanceManager({
         </form>
       )}
 
-      {/* Transfer Antar Akun Form */}
-      {isTransferring && (
-        <form
-          onSubmit={handleTransfer}
-          className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
-        >
-          <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
-            <div className="flex items-center gap-2">
-              <ArrowRightLeft className="w-4 h-4 text-blue-500" />
-              <h3 className="text-xs font-medium text-[var(--foreground)]">Transfer Saldo Antar Rekening</h3>
-            </div>
-            <span className="text-[10px] text-[var(--foreground-muted)] font-mono">
-              Memindahkan saldo tanpa memengaruhi cashflow belanja
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-            <div>
-              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Dari Rekening</label>
-              <select
-                value={transferFromAccountId}
-                onChange={(e) => setTransferFromAccountId(e.target.value)}
-                className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-              >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name} ({formatIDR(acc.currentBalance)})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Ke Rekening</label>
-              <select
-                value={transferToAccountId}
-                onChange={(e) => setTransferToAccountId(e.target.value)}
-                className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-              >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id} disabled={acc.id === transferFromAccountId}>
-                    {acc.name} ({formatIDR(acc.currentBalance)})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Nominal Transfer (Rp)</label>
-              <input
-                type="number"
-                required
-                autoFocus
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
-                placeholder="Nominal (Rp)..."
-                className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Keterangan Transfer</label>
-              <input
-                type="text"
-                value={transferDescription}
-                onChange={(e) => setTransferDescription(e.target.value)}
-                placeholder="Contoh: Tarik Tunai ATM, Top up Gopay..."
-                className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setIsTransferring(false)}
-              className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isPending || !transferAmount || transferFromAccountId === transferToAccountId}
-              className="h-8 px-3.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-            >
-              Proses Transfer
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Add Account Form */}
-      {isAddingAccount && (
-        <form
-          onSubmit={handleCreateAccount}
-          className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
-        >
-          <h3 className="text-xs font-medium text-[var(--foreground)] pb-2 border-b border-[var(--border)]">
-            Tambah Akun / Rekening Baru
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <input
-              type="text"
-              required
-              autoFocus
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder="Nama akun (misal: BCA, Tunai, Gopay)..."
-              className="h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-            />
-            <select
-              value={accountType}
-              onChange={(e) => setAccountType(e.target.value as "bank" | "cash" | "ewallet" | "other")}
-              className="h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-            >
-              <option value="bank">Bank</option>
-              <option value="cash">Tunai / Dompet</option>
-              <option value="ewallet">E-Wallet</option>
-              <option value="other">Lainnya</option>
-            </select>
-            <input
-              type="number"
-              value={openingBalance}
-              onChange={(e) => setOpeningBalance(e.target.value)}
-              placeholder="Saldo awal (Rp)..."
-              className="h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
-            />
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setIsAddingAccount(false)}
-              className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isPending || !accountName.trim()}
-              className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] cursor-pointer"
-            >
-              Simpan Akun
-            </button>
-          </div>
-        </form>
-      )}
-
       {/* Tab 1: Account Overview */}
       {activeTab === "overview" && (
         <div className="space-y-4">
@@ -1211,8 +1046,13 @@ export function FinanceManager({
               {accounts.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => setIsTransferring(true)}
-                  className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] cursor-pointer flex items-center gap-1.5"
+                  onClick={() => {
+                    setIsTransferring(!isTransferring);
+                    setIsAddingAccount(false);
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] cursor-pointer flex items-center gap-1.5 transition-colors ${
+                    isTransferring ? "bg-[var(--surface-raised)] border-blue-500/50 text-blue-500" : ""
+                  }`}
                 >
                   <ArrowRightLeft className="w-3 h-3 text-blue-500" />
                   <span>Transfer Saldo</span>
@@ -1220,14 +1060,166 @@ export function FinanceManager({
               )}
               <button
                 type="button"
-                onClick={() => setIsAddingAccount(true)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] font-medium cursor-pointer flex items-center gap-1.5"
+                onClick={() => {
+                  setIsAddingAccount(!isAddingAccount);
+                  setIsTransferring(false);
+                }}
+                className={`px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] font-medium cursor-pointer flex items-center gap-1.5 transition-colors ${
+                  isAddingAccount ? "bg-[var(--surface-raised)] border-[var(--border-active)]" : ""
+                }`}
               >
                 <Wallet className="w-3 h-3 text-[var(--foreground-muted)]" />
                 <span>Tambah Akun</span>
               </button>
             </div>
           </div>
+
+          {/* Transfer Antar Akun Form */}
+          {isTransferring && (
+            <form
+              onSubmit={handleTransfer}
+              className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                  <h3 className="text-xs font-medium text-[var(--foreground)]">Transfer Saldo Antar Rekening</h3>
+                </div>
+                <span className="text-[10px] text-[var(--foreground-muted)] font-mono">
+                  Memindahkan saldo tanpa memengaruhi cashflow belanja
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Dari Rekening</label>
+                  <select
+                    value={transferFromAccountId}
+                    onChange={(e) => setTransferFromAccountId(e.target.value)}
+                    className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({formatIDR(acc.currentBalance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Ke Rekening</label>
+                  <select
+                    value={transferToAccountId}
+                    onChange={(e) => setTransferToAccountId(e.target.value)}
+                    className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id} disabled={acc.id === transferFromAccountId}>
+                        {acc.name} ({formatIDR(acc.currentBalance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Nominal Transfer (Rp)</label>
+                  <input
+                    type="number"
+                    required
+                    autoFocus
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    placeholder="Nominal (Rp)..."
+                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Keterangan Transfer</label>
+                  <input
+                    type="text"
+                    value={transferDescription}
+                    onChange={(e) => setTransferDescription(e.target.value)}
+                    placeholder="Contoh: Tarik Tunai ATM, Top up Gopay..."
+                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsTransferring(false)}
+                  className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !transferAmount || transferFromAccountId === transferToAccountId}
+                  className="h-8 px-3.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                >
+                  Proses Transfer
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Add Account Form */}
+          {isAddingAccount && (
+            <form
+              onSubmit={handleCreateAccount}
+              className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
+            >
+              <h3 className="text-xs font-medium text-[var(--foreground)] pb-2 border-b border-[var(--border)]">
+                Tambah Akun / Rekening Baru
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="Nama akun (misal: BCA, Tunai, Gopay)..."
+                  className="h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                />
+                <select
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value as "bank" | "cash" | "ewallet" | "other")}
+                  className="h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                >
+                  <option value="bank">Bank</option>
+                  <option value="cash">Tunai / Dompet</option>
+                  <option value="ewallet">E-Wallet</option>
+                  <option value="other">Lainnya</option>
+                </select>
+                <input
+                  type="number"
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  placeholder="Saldo awal (Rp)..."
+                  className="h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingAccount(false)}
+                  className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !accountName.trim()}
+                  className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] cursor-pointer"
+                >
+                  Simpan Akun
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {accounts.length === 0 ? (
