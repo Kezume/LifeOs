@@ -46,12 +46,17 @@ export const createDebtSchema = z.object({
   amount: z.string().min(1, "Nominal tidak boleh kosong"),
   dueDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  isInstallment: z.boolean().optional().default(false),
+  totalInstallments: z.number().int().min(1).optional().default(1),
+  installmentAmount: z.string().optional().nullable(),
+  dueDay: z.number().int().min(1).max(31).optional().nullable(),
 });
 
 export const payDebtSchema = z.object({
   debtId: z.string().uuid("ID utang/piutang tidak valid"),
   amount: z.string().min(1, "Nominal pembayaran tidak boleh kosong"),
   accountId: z.string().uuid().optional().nullable(),
+  isInstallmentCycle: z.boolean().optional().default(false),
 });
 
 export type CreateAccountInput = z.input<typeof createAccountSchema>;

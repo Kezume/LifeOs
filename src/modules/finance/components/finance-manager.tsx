@@ -94,6 +94,11 @@ interface DebtItem {
   dueDate: Date | null;
   status: string; // "unpaid" | "partial" | "paid"
   notes: string | null;
+  isInstallment?: boolean;
+  totalInstallments?: number;
+  paidInstallments?: number;
+  installmentAmount?: string | null;
+  dueDay?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -132,6 +137,10 @@ export function FinanceManager({
   const [debtAmount, setDebtAmount] = useState("");
   const [debtDueDate, setDebtDueDate] = useState("");
   const [debtNotes, setDebtNotes] = useState("");
+  const [debtIsInstallment, setDebtIsInstallment] = useState(false);
+  const [debtTotalInstallments, setDebtTotalInstallments] = useState("3");
+  const [debtInstallmentAmount, setDebtInstallmentAmount] = useState("");
+  const [debtDueDay, setDebtDueDay] = useState("25");
 
   const [activePayDebt, setActivePayDebt] = useState<DebtItem | null>(null);
   const [payDebtAmount, setPayDebtAmount] = useState("");
@@ -334,12 +343,20 @@ export function FinanceManager({
         amount: debtAmount,
         dueDate: debtDueDate || null,
         notes: debtNotes.trim() || null,
+        isInstallment: debtIsInstallment,
+        totalInstallments: debtIsInstallment ? Math.max(1, parseInt(debtTotalInstallments) || 1) : 1,
+        installmentAmount: debtIsInstallment && debtInstallmentAmount ? debtInstallmentAmount : null,
+        dueDay: debtIsInstallment && debtDueDay ? parseInt(debtDueDay) : null,
       });
       setIsAddingDebt(false);
       setDebtPersonName("");
       setDebtAmount("");
       setDebtDueDate("");
       setDebtNotes("");
+      setDebtIsInstallment(false);
+      setDebtTotalInstallments("3");
+      setDebtInstallmentAmount("");
+      setDebtDueDay("25");
     });
   };
 
@@ -1963,6 +1980,17 @@ export function FinanceManager({
                   {formatIDR((summary.totalReceivableRemaining || 0) - (summary.totalDebtRemaining || 0))}
                 </span>
               </div>
+              {(summary.monthlyInstallmentDue || 0) > 0 && (
+                <>
+                  <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+                  <div>
+                    <span className="text-[10px] text-[var(--foreground-muted)] block">Tagihan Cicilan Bulan Ini</span>
+                    <span className="font-semibold text-blue-500 tabular-nums">
+                      {formatIDR(summary.monthlyInstallmentDue)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             <button
@@ -2015,10 +2043,52 @@ export function FinanceManager({
                 </div>
               </div>
 
+              {/* Skema Pelunasan */}
+              <div className="p-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-medium text-[var(--foreground)] block">Skema Pembayaran</span>
+                  <span className="text-[10px] text-[var(--foreground-muted)]">
+                    {debtIsInstallment
+                      ? "Cicilan bulanan berkala dengan tenor (seperti pinjaman online/bank)"
+                      : "Pembayaran tempo tunggal (sekali lunas)"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setDebtIsInstallment(false)}
+                    className={`h-6 px-2.5 text-[11px] rounded cursor-pointer transition-colors ${
+                      !debtIsInstallment
+                        ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold border border-[var(--border)] shadow-xs"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Sekali Lunas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDebtIsInstallment(true);
+                      if (debtAmount && (!debtInstallmentAmount || debtInstallmentAmount === "0")) {
+                        const m = parseInt(debtTotalInstallments) || 3;
+                        setDebtInstallmentAmount(String(Math.round(Number(debtAmount) / m)));
+                      }
+                    }}
+                    className={`h-6 px-2.5 text-[11px] rounded cursor-pointer transition-colors ${
+                      debtIsInstallment
+                        ? "bg-blue-600 text-white font-semibold shadow-xs"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Cicilan Bulanan (Tenor)
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
                 <div>
                   <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
-                    {debtType === "debt" ? "Pemberi Pinjaman (Nama Orang / Bank)" : "Peminjam (Nama Orang / Teman)"}
+                    {debtType === "debt" ? "Pemberi Pinjaman (Nama Orang / Bank / Pinjol)" : "Peminjam (Nama Orang / Teman)"}
                   </label>
                   <input
                     type="text"
@@ -2026,25 +2096,35 @@ export function FinanceManager({
                     autoFocus
                     value={debtPersonName}
                     onChange={(e) => setDebtPersonName(e.target.value)}
-                    placeholder="Contoh: Budi, Bank BCA, dll..."
+                    placeholder="Contoh: Budi, Kredivo, BCA, dll..."
                     className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Nominal (Rp)</label>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                    {debtIsInstallment ? "Total Pokok Pinjaman (Rp)" : "Nominal (Rp)"}
+                  </label>
                   <input
                     type="number"
                     required
                     value={debtAmount}
-                    onChange={(e) => setDebtAmount(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDebtAmount(val);
+                      if (debtIsInstallment && parseInt(debtTotalInstallments) > 0) {
+                        setDebtInstallmentAmount(String(Math.round(Number(val) / parseInt(debtTotalInstallments))));
+                      }
+                    }}
                     placeholder="Nominal pinjaman..."
                     className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Jatuh Tempo (Opsional)</label>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                    {debtIsInstallment ? "Jatuh Tempo Cicilan Pertama" : "Jatuh Tempo (Opsional)"}
+                  </label>
                   <input
                     type="date"
                     value={debtDueDate}
@@ -2064,6 +2144,79 @@ export function FinanceManager({
                   />
                 </div>
               </div>
+
+              {/* Pengaturan Cicilan Bulanan */}
+              {debtIsInstallment && (
+                <div className="p-3 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                      Tenor Cicilan (Bulan)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={debtTotalInstallments}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDebtTotalInstallments(val);
+                        if (debtAmount && parseInt(val) > 0) {
+                          setDebtInstallmentAmount(String(Math.round(Number(debtAmount) / parseInt(val))));
+                        }
+                      }}
+                      placeholder="Contoh: 3, 6, 12..."
+                      className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] text-[var(--foreground-muted)]">
+                        Tagihan per Bulan (Rp)
+                      </label>
+                      {debtAmount && parseInt(debtTotalInstallments) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDebtInstallmentAmount(
+                              String(Math.round(Number(debtAmount) / parseInt(debtTotalInstallments)))
+                            );
+                          }}
+                          className="text-[9px] text-blue-500 hover:underline cursor-pointer"
+                        >
+                          Hitung Rata
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      value={debtInstallmentAmount}
+                      onChange={(e) => setDebtInstallmentAmount(e.target.value)}
+                      placeholder="Nominal per bulan..."
+                      className="w-full h-8 px-2.5 text-xs rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">
+                      Tanggal Penagihan Bulanan
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-[var(--foreground-muted)]">Tgl</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={debtDueDay}
+                        onChange={(e) => setDebtDueDay(e.target.value)}
+                        placeholder="1-31"
+                        className="w-16 h-8 px-2 text-xs rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                      />
+                      <span className="text-[10px] text-[var(--foreground-muted)] font-mono">tiap bulan</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
@@ -2093,15 +2246,22 @@ export function FinanceManager({
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
                 <div>
                   <h3 className="text-xs font-semibold text-[var(--foreground)]">
-                    {activePayDebt.type === "debt" ? "Bayar Cicilan Utang ke " : "Terima Pembayaran Piutang dari "}
+                    {activePayDebt.type === "debt" ? "Bayar Cicilan / Utang ke " : "Terima Pembayaran Piutang dari "}
                     <span className="text-blue-500">{activePayDebt.personName}</span>
                   </h3>
-                  <p className="text-[11px] text-[var(--foreground-muted)]">
-                    Sisa yang belum lunas:{" "}
-                    <span className="font-mono font-medium text-[var(--foreground)] tabular-nums">
-                      {formatIDR(Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0)))}
+                  <div className="flex items-center gap-2 text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                    {activePayDebt.isInstallment && (
+                      <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-500 font-mono text-[10px] border border-blue-500/20">
+                        Cicilan ke-{(activePayDebt.paidInstallments || 0) + 1} dari {activePayDebt.totalInstallments}
+                      </span>
+                    )}
+                    <span>
+                      Sisa tagihan:{" "}
+                      <span className="font-mono font-medium text-[var(--foreground)] tabular-nums">
+                        {formatIDR(Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0)))}
+                      </span>
                     </span>
-                  </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -2109,6 +2269,35 @@ export function FinanceManager({
                   className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
                 >
                   Tutup
+                </button>
+              </div>
+
+              {/* Tombol Isi Cepat */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-[var(--foreground-muted)] font-mono">Pilihan Cepat:</span>
+                {activePayDebt.isInstallment && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const remaining = Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0));
+                      const remainingTenor = Math.max(1, (activePayDebt.totalInstallments || 1) - (activePayDebt.paidInstallments || 0));
+                      const cycleBill = Number(activePayDebt.installmentAmount || Math.round(remaining / remainingTenor));
+                      setPayDebtAmount(String(Math.min(remaining, cycleBill)));
+                    }}
+                    className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-blue-500 hover:text-[var(--foreground)] cursor-pointer"
+                  >
+                    1x Cicilan Bulan Ini
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const remaining = Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0));
+                    setPayDebtAmount(String(remaining));
+                  }}
+                  className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-mono text-emerald-500 hover:text-[var(--foreground)] cursor-pointer"
+                >
+                  Pelunasan Penuh ({formatIDR(Math.max(0, Number(activePayDebt.amount) - Number(activePayDebt.paidAmount || 0)))})
                 </button>
               </div>
 
@@ -2223,6 +2412,14 @@ export function FinanceManager({
                 const isDebt = item.type === "debt";
                 const isPaid = item.status === "paid" || remaining === 0;
 
+                const isInstallment = !!item.isInstallment;
+                const totalTenor = item.totalInstallments || 1;
+                const paidTenor = item.paidInstallments || 0;
+                const remainingTenor = Math.max(0, totalTenor - paidTenor);
+                const currentCycleBill = isInstallment
+                  ? Number(item.installmentAmount || Math.round(remaining / Math.max(1, remainingTenor)))
+                  : remaining;
+
                 const isOverdue =
                   !isPaid &&
                   item.dueDate &&
@@ -2245,7 +2442,12 @@ export function FinanceManager({
                           {isDebt ? "Utang Saya" : "Piutang Saya"}
                         </span>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {isInstallment && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                              {paidTenor}/{totalTenor} Bln
+                            </span>
+                          )}
                           {isOverdue && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 font-mono border border-rose-500/20">
                               Lewat Tempo
@@ -2274,9 +2476,31 @@ export function FinanceManager({
                         )}
                       </div>
 
+                      {/* Info Tagihan Siklus Bulan Ini jika Skema Cicilan */}
+                      {isInstallment && !isPaid && (
+                        <div className="p-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-[var(--foreground-muted)] font-mono">
+                              Cicilan ke-{paidTenor + 1} dari {totalTenor}
+                            </span>
+                            <span className="font-mono font-medium text-blue-500">
+                              {remainingTenor} bulan tersisa
+                            </span>
+                          </div>
+                          <div className="flex items-baseline justify-between pt-0.5">
+                            <span className="text-[10px] text-[var(--foreground-muted)]">Tagihan Siklus Ini:</span>
+                            <span className="text-sm font-semibold text-[var(--foreground)] tabular-nums">
+                              {formatIDR(currentCycleBill)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       <div>
                         <div className="flex items-baseline justify-between">
-                          <span className="text-[10px] text-[var(--foreground-muted)]">Sisa Tagihan</span>
+                          <span className="text-[10px] text-[var(--foreground-muted)]">
+                            {isInstallment ? "Sisa Total Pokok Pinjaman" : "Sisa Tagihan"}
+                          </span>
                           <span className="text-[10px] font-mono text-[var(--foreground-muted)]">
                             {pct}% terbayar
                           </span>
@@ -2285,7 +2509,7 @@ export function FinanceManager({
                           {formatIDR(remaining)}
                         </div>
                         <div className="text-[10px] font-mono text-[var(--foreground-muted)] mt-0.5">
-                          Total: {formatIDR(totalAmt)} · Terbayar: {formatIDR(paidAmt)}
+                          Total Pinjaman: {formatIDR(totalAmt)} · Terbayar: {formatIDR(paidAmt)}
                         </div>
                       </div>
 
@@ -2307,7 +2531,7 @@ export function FinanceManager({
                         <div className="text-[10px] font-mono flex items-center gap-1 text-[var(--foreground-muted)]">
                           <Clock className="w-3 h-3" />
                           <span>
-                            Jatuh tempo:{" "}
+                            {isInstallment ? "Jatuh tempo siklus ini: " : "Jatuh tempo: "}
                             {new Intl.DateTimeFormat("id-ID", {
                               day: "numeric",
                               month: "short",
@@ -2318,23 +2542,31 @@ export function FinanceManager({
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between">
+                    <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between gap-1.5">
                       {!isPaid ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActivePayDebt(item);
-                            setPayDebtAmount(String(remaining));
-                          }}
-                          className="h-7 px-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] hover:border-[var(--foreground)] text-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1.5 text-[11px] font-medium"
-                        >
-                          <HandCoins className="w-3 h-3 text-emerald-500" />
-                          <span>{isDebt ? "Bayar Cicilan" : "Terima Cicilan"}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActivePayDebt(item);
+                              setPayDebtAmount(String(currentCycleBill));
+                            }}
+                            className="h-7 px-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] hover:border-[var(--foreground)] text-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1.5 text-[11px] font-medium"
+                          >
+                            <HandCoins className="w-3 h-3 text-emerald-500" />
+                            <span>
+                              {isInstallment
+                                ? `Bayar Cicilan (${formatIDR(currentCycleBill)})`
+                                : isDebt
+                                ? "Bayar Utang"
+                                : "Terima Piutang"}
+                            </span>
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-[11px] text-emerald-500 font-mono flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Selesai</span>
+                          <span>Lunas</span>
                         </span>
                       )}
 

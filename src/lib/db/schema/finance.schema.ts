@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, numeric, uuid, unique, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, numeric, uuid, unique, index, boolean, integer } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
 export const financeAccounts = pgTable(
@@ -125,6 +125,11 @@ export const debts = pgTable(
     dueDate: timestamp("due_date", { withTimezone: true }),
     status: text("status").notNull().default("unpaid"), // "unpaid" | "partial" | "paid"
     notes: text("notes"),
+    isInstallment: boolean("is_installment").notNull().default(false),
+    totalInstallments: integer("total_installments").notNull().default(1),
+    paidInstallments: integer("paid_installments").notNull().default(0),
+    installmentAmount: numeric("installment_amount", { precision: 18, scale: 2 }),
+    dueDay: integer("due_day"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

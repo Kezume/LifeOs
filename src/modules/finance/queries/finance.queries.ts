@@ -159,6 +159,7 @@ export interface FinanceSummary {
   savingsProgressRate: number;
   totalDebtRemaining: number;
   totalReceivableRemaining: number;
+  monthlyInstallmentDue: number;
   financialAdvice: FinancialAdvice[];
 }
 
@@ -204,6 +205,11 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
         paidAmount: debts.paidAmount,
         dueDate: debts.dueDate,
         status: debts.status,
+        isInstallment: debts.isInstallment,
+        totalInstallments: debts.totalInstallments,
+        paidInstallments: debts.paidInstallments,
+        installmentAmount: debts.installmentAmount,
+        dueDay: debts.dueDay,
       })
       .from(debts)
       .where(eq(debts.userId, userId)),
@@ -358,14 +364,34 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
   // Utang & Piutang Calculations
   let totalDebtRemaining = 0;
   let totalReceivableRemaining = 0;
+  let monthlyInstallmentDue = 0;
 
   userDebtsList.forEach((d) => {
     const remaining = Math.max(0, Number(d.amount) - Number(d.paidAmount || 0));
     if (d.status !== "paid" && remaining > 0) {
-      if (d.type === "debt") totalDebtRemaining += remaining;
-      else if (d.type === "receivable") totalReceivableRemaining += remaining;
+      if (d.type === "debt") {
+        totalDebtRemaining += remaining;
+        if (d.isInstallment) {
+          const installment = Number(
+            d.installmentAmount ||
+              Math.round(remaining / Math.max(1, (d.totalInstallments || 1) - (d.paidInstallments || 0)))
+          );
+          monthlyInstallmentDue += Math.min(remaining, installment);
+        }
+      } else if (d.type === "receivable") {
+        totalReceivableRemaining += remaining;
+      }
     }
   });
+
+  if (monthlyInstallmentDue > 0) {
+    financialAdvice.push({
+      type: "info",
+      title: "Tagihan Cicilan Bulan Ini",
+      description: `Kewajiban angsuran pinjaman bulan ini adalah ${formatIDRText(monthlyInstallmentDue)}. Pastikan saldo kas Anda telah dialokasikan sebelum tanggal jatuh tempo.`,
+      metric: `${formatIDRText(monthlyInstallmentDue)} / bln`,
+    });
+  }
 
   const overdueDebts = userDebtsList.filter(
     (d) => d.status !== "paid" && d.type === "debt" && d.dueDate && new Date(d.dueDate) < now
@@ -406,6 +432,7 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
     savingsProgressRate,
     totalDebtRemaining,
     totalReceivableRemaining,
+    monthlyInstallmentDue,
     financialAdvice,
   };
 }

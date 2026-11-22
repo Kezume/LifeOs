@@ -261,6 +261,23 @@ export async function createDebtAction(data: CreateDebtInput) {
   const user = await requireUser();
   const parsed = createDebtSchema.parse(data);
 
+  let installmentAmt = parsed.installmentAmount;
+  if (parsed.isInstallment && !installmentAmt) {
+    const total = Number(parsed.amount);
+    const months = parsed.totalInstallments || 1;
+    installmentAmt = String(Math.round(total / months));
+  }
+
+  // Jika dueDate tidak diisi tapi dueDay diisi, hitung tanggal jatuh tempo siklus pertama
+  let finalDueDate = parsed.dueDate ? new Date(parsed.dueDate) : null;
+  if (!finalDueDate && parsed.dueDay) {
+    const now = new Date();
+    finalDueDate = new Date(now.getFullYear(), now.getMonth(), parsed.dueDay, 12, 0, 0);
+    if (finalDueDate < now) {
+      finalDueDate.setMonth(finalDueDate.getMonth() + 1);
+    }
+  }
+
   const [newDebt] = await db
     .insert(debts)
     .values({
@@ -269,9 +286,14 @@ export async function createDebtAction(data: CreateDebtInput) {
       personName: parsed.personName.trim(),
       amount: parsed.amount,
       paidAmount: "0",
-      dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
+      dueDate: finalDueDate,
       status: "unpaid",
       notes: parsed.notes?.trim() || null,
+      isInstallment: parsed.isInstallment || false,
+      totalInstallments: parsed.isInstallment ? (parsed.totalInstallments || 1) : 1,
+      paidInstallments: 0,
+      installmentAmount: parsed.isInstallment ? installmentAmt : null,
+      dueDay: parsed.dueDay || null,
     })
     .returning();
 
@@ -302,21 +324,51 @@ export async function payDebtAction(data: PayDebtInput) {
   const currentPaid = Number(existingDebt.paidAmount || 0);
   const totalAmount = Number(existingDebt.amount);
   const newPaidAmount = Math.min(totalAmount, currentPaid + payAmt);
-  const newStatus = newPaidAmount >= totalAmount ? "paid" : "partial";
+  const isFullyPaid = newPaidAmount >= totalAmount;
+
+  // Hitung siklus cicilan baru jika skema cicilan
+  let newPaidInstallments = existingDebt.paidInstallments || 0;
+  let newDueDate = existingDebt.dueDate ? new Date(existingDebt.dueDate) : null;
+
+  if (existingDebt.isInstallment) {
+    if (isFullyPaid) {
+      newPaidInstallments = existingDebt.totalInstallments;
+    } else {
+      newPaidInstallments = Math.min(
+        existingDebt.totalInstallments,
+        newPaidInstallments + 1
+      );
+      // Majukan tanggal jatuh tempo siklus berikutnya jika ada tanggal jatuh tempo
+      if (newDueDate) {
+        newDueDate = new Date(newDueDate);
+        newDueDate.setMonth(newDueDate.getMonth() + 1);
+      }
+    }
+  }
+
+  const newStatus = isFullyPaid || (existingDebt.isInstallment && newPaidInstallments >= existingDebt.totalInstallments)
+    ? "paid"
+    : "partial";
 
   // 1. Jika pengguna memilih akun kas, catat transaksi kas otomatis agar saldo dan cashflow terintegrasi
   if (parsed.accountId) {
     const isDebt = existingDebt.type === "debt";
-    // debt (utang kita): kita bayar -> expense keluar dari akun
-    // receivable (piutang kita): orang bayar ke kita -> income masuk ke akun
+    let desc = isDebt
+      ? `Bayar Utang: ${existingDebt.personName}`
+      : `Terima Piutang: ${existingDebt.personName}`;
+
+    if (existingDebt.isInstallment) {
+      desc = isDebt
+        ? `Bayar Cicilan ke-${newPaidInstallments}/${existingDebt.totalInstallments}: ${existingDebt.personName}`
+        : `Terima Cicilan ke-${newPaidInstallments}/${existingDebt.totalInstallments}: ${existingDebt.personName}`;
+    }
+
     await db.insert(financeTransactions).values({
       userId: user.id,
       accountId: parsed.accountId,
       type: isDebt ? "expense" : "income",
       amount: parsed.amount,
-      description: isDebt
-        ? `Bayar Utang: ${existingDebt.personName}`
-        : `Terima Piutang: ${existingDebt.personName}`,
+      description: desc,
       transactionDate: new Date(),
     });
   }
@@ -326,6 +378,8 @@ export async function payDebtAction(data: PayDebtInput) {
     .update(debts)
     .set({
       paidAmount: String(newPaidAmount),
+      paidInstallments: newPaidInstallments,
+      dueDate: newDueDate,
       status: newStatus,
       updatedAt: new Date(),
     })
