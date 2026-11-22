@@ -6,6 +6,7 @@ import {
   Wallet,
   ArrowDownRight,
   ArrowUpRight,
+  ArrowRightLeft,
   Trash2,
   PiggyBank,
   Smartphone,
@@ -14,11 +15,23 @@ import {
   PieChart,
   Receipt,
   Tag,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  Calendar,
+  Clock,
+  Target,
+  Info,
+  ArrowUpCircle,
+  ArrowDownCircle,
 } from "lucide-react";
 import {
   createAccountAction,
   createTransactionAction,
   createSavingsGoalAction,
+  depositToSavingsGoalAction,
+  withdrawFromSavingsGoalAction,
+  deleteSavingsGoalAction,
   deleteTransactionAction,
 } from "../actions/finance.actions";
 import { WhatsAppSyncCard } from "./whatsapp-sync-card";
@@ -61,6 +74,9 @@ interface SavingsItem {
   targetAmount: string;
   currentAmount: string;
   targetDate: Date | null;
+  financeAccountId?: string | null;
+  accountName?: string | null;
+  createdAt?: Date;
 }
 
 export function FinanceManager({
@@ -80,9 +96,13 @@ export function FinanceManager({
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "savings" | "whatsapp">("overview");
   const [periodView, setPeriodView] = useState<"daily" | "monthly" | "all_time">("monthly");
+  const [financeChartMode, setFinanceChartMode] = useState<"category" | "cashflow" | "accounts">("category");
+
+  // Dialog & Form states
   const [isAddingTx, setIsAddingTx] = useState(false);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [isAddingSavings, setIsAddingSavings] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // New Transaction State
   const [txType, setTxType] = useState<"income" | "expense">("expense");
@@ -96,9 +116,25 @@ export function FinanceManager({
   const [accountType, setAccountType] = useState<"bank" | "cash" | "ewallet" | "other">("bank");
   const [openingBalance, setOpeningBalance] = useState("0");
 
-  // New Savings State
+  // Transfer State
+  const [transferFromAccountId, setTransferFromAccountId] = useState(accounts[0]?.id || "");
+  const [transferToAccountId, setTransferToAccountId] = useState(accounts[1]?.id || accounts[0]?.id || "");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferDescription, setTransferDescription] = useState("");
+
+  // New Savings Goal State
   const [savingsTitle, setSavingsTitle] = useState("");
   const [savingsTarget, setSavingsTarget] = useState("");
+  const [savingsAccountId, setSavingsAccountId] = useState(accounts[0]?.id || "");
+  const [savingsTargetDate, setSavingsTargetDate] = useState("");
+
+  // Inline Goal Action (Deposit / Withdraw)
+  const [activeGoalAction, setActiveGoalAction] = useState<{
+    goalId: string;
+    mode: "deposit" | "withdraw";
+  } | null>(null);
+  const [goalActionAmount, setGoalActionAmount] = useState("");
+  const [goalActionAccountId, setGoalActionAccountId] = useState(accounts[0]?.id || "");
 
   const [isPending, startTransition] = useTransition();
 
@@ -136,6 +172,30 @@ export function FinanceManager({
     });
   };
 
+  const handleTransfer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferFromAccountId || !transferToAccountId || !transferAmount) return;
+    if (transferFromAccountId === transferToAccountId) {
+      alert("Akun asal dan akun tujuan tidak boleh sama");
+      return;
+    }
+
+    startTransition(async () => {
+      const fromName = accounts.find((a) => a.id === transferFromAccountId)?.name || "Akun Asal";
+      const toName = accounts.find((a) => a.id === transferToAccountId)?.name || "Akun Tujuan";
+      await createTransactionAction({
+        accountId: transferFromAccountId,
+        transferToAccountId: transferToAccountId,
+        type: "transfer",
+        amount: transferAmount,
+        description: transferDescription.trim() || `Transfer dari ${fromName} ke ${toName}`,
+      });
+      setTransferAmount("");
+      setTransferDescription("");
+      setIsTransferring(false);
+    });
+  };
+
   const handleCreateSavings = (e: React.FormEvent) => {
     e.preventDefault();
     if (!savingsTitle.trim() || !savingsTarget) return;
@@ -145,10 +205,48 @@ export function FinanceManager({
         title: savingsTitle.trim(),
         targetAmount: savingsTarget,
         currentAmount: "0",
+        targetDate: savingsTargetDate ? savingsTargetDate : null,
+        financeAccountId: savingsAccountId || null,
       });
       setSavingsTitle("");
       setSavingsTarget("");
+      setSavingsTargetDate("");
       setIsAddingSavings(false);
+    });
+  };
+
+  const handleGoalDeposit = (goalId: string) => {
+    if (!goalActionAmount || !goalActionAccountId) return;
+
+    startTransition(async () => {
+      await depositToSavingsGoalAction({
+        goalId,
+        accountId: goalActionAccountId,
+        amount: goalActionAmount,
+      });
+      setActiveGoalAction(null);
+      setGoalActionAmount("");
+    });
+  };
+
+  const handleGoalWithdraw = (goalId: string) => {
+    if (!goalActionAmount || !goalActionAccountId) return;
+
+    startTransition(async () => {
+      await withdrawFromSavingsGoalAction({
+        goalId,
+        accountId: goalActionAccountId,
+        amount: goalActionAmount,
+      });
+      setActiveGoalAction(null);
+      setGoalActionAmount("");
+    });
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (!confirm("Hapus target tabungan ini?")) return;
+    startTransition(async () => {
+      await deleteSavingsGoalAction(goalId);
     });
   };
 
@@ -206,8 +304,6 @@ export function FinanceManager({
     }
     return true; // all_time
   });
-
-  const [financeChartMode, setFinanceChartMode] = useState<"category" | "cashflow" | "accounts">("category");
 
   const accountSegments: DonutSegment[] = accounts
     .filter((a) => a.currentBalance > 0)
@@ -329,12 +425,15 @@ export function FinanceManager({
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)]">
-          <div className="text-xs text-[var(--foreground-muted)]">Total Saldo Bersih</div>
+          <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+            <span>Total Saldo Bersih</span>
+            <Wallet className="w-3.5 h-3.5 text-blue-500" strokeWidth={1.5} />
+          </div>
           <div className={`text-xl font-medium tracking-tight mt-2 tabular-nums ${summary.totalBalance < 0 ? "text-[var(--danger)]" : "text-[var(--foreground)]"}`}>
             {formatIDR(summary.totalBalance)}
           </div>
-          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate">
-            Dari {accounts.length} akun terdaftar
+          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate font-mono">
+            Bebas: {formatIDR(summary.freeBalance || 0)} · Terkunci: {formatIDR(summary.totalSavingsCurrent || 0)}
           </div>
         </div>
 
@@ -634,6 +733,87 @@ export function FinanceManager({
         </div>
       </div>
 
+      {/* NEW: Saran Pengeluaran & Anggaran Cerdas (Financial Intelligence & Safe-to-Spend) */}
+      <div className="p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-500" strokeWidth={1.5} />
+            <div>
+              <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+                Saran Pengeluaran & Anggaran Cerdas
+              </h3>
+              <p className="text-[11px] text-[var(--foreground-muted)]">
+                Rekomendasi otomatis berbasis pola arus kas, batas belanja aman harian, dan alokasi tabungan
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-xs font-mono text-[var(--foreground)] font-medium">
+              Batas Belanja: {formatIDR(summary.safeDailySpend || 0)} / hari
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-500 font-medium">
+              Saldo Bebas: {formatIDR(summary.freeBalance || 0)}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {(summary.financialAdvice && summary.financialAdvice.length > 0
+            ? summary.financialAdvice
+            : [
+                {
+                  type: "tip" as const,
+                  title: "Prinsip Anggaran 50/30/20",
+                  description:
+                    "Alokasikan 50% untuk kebutuhan pokok, 30% untuk gaya hidup, dan 20% langsung diamankan ke tabungan atau target impian.",
+                  metric: "50 : 30 : 20",
+                },
+                {
+                  type: "info" as const,
+                  title: "Batas Belanja Aman Harian",
+                  description: `Batas pengeluaran aman Anda saat ini adalah ${formatIDR(summary.safeDailySpend || 0)} per hari agar arus kas tetap surplus.`,
+                  metric: `${formatIDR(summary.safeDailySpend || 0)} / hari`,
+                },
+                {
+                  type: "success" as const,
+                  title: "Integrasi Tabungan & Rekening",
+                  description:
+                    "Dana yang Anda setorkan ke target belanja otomatis mengurangi saldo rekening dan terpisah dari saldo bebas belanja.",
+                  metric: "Terintegrasi",
+                },
+              ]
+          ).map((adv, idx) => (
+            <div
+              key={idx}
+              className="p-3.5 rounded-lg bg-[var(--surface-raised)]/50 border border-[var(--border)] flex flex-col justify-between gap-2.5"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-[var(--foreground)] flex items-center gap-1.5">
+                    {adv.type === "warning" && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                    {adv.type === "success" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                    {adv.type === "info" && <Info className="w-3.5 h-3.5 text-blue-500" />}
+                    {adv.type === "tip" && <Sparkles className="w-3.5 h-3.5 text-purple-500" />}
+                    {adv.title}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+                  {adv.description}
+                </p>
+              </div>
+
+              {adv.metric && (
+                <div className="pt-2 border-t border-[var(--border)]/60 flex items-center justify-between text-[10px] font-mono">
+                  <span className="text-[var(--foreground-muted)]">Indikator</span>
+                  <span className="font-semibold text-[var(--foreground)]">{adv.metric}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Tabs & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
@@ -667,7 +847,7 @@ export function FinanceManager({
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            Target Tabungan
+            Target Belanja & Tabungan
             <span className="ml-1.5 text-[10px] font-mono opacity-60">{savings.length}</span>
           </button>
           <button
@@ -690,10 +870,20 @@ export function FinanceManager({
           {accounts.length > 0 && (
             <button
               onClick={() => setIsAddingTx(!isAddingTx)}
-              className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer flex-1 sm:flex-none"
+              className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer flex-1 sm:flex-none shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
               <span>Catat Transaksi</span>
+            </button>
+          )}
+
+          {accounts.length > 1 && (
+            <button
+              onClick={() => setIsTransferring(!isTransferring)}
+              className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-1 sm:flex-none"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
+              <span>Transfer</span>
             </button>
           )}
 
@@ -758,7 +948,7 @@ export function FinanceManager({
             >
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.name} ({acc.accountType})
+                  {acc.name} ({formatIDR(acc.currentBalance)})
                 </option>
               ))}
             </select>
@@ -767,18 +957,20 @@ export function FinanceManager({
               onChange={(e) => setTxCategoryId(e.target.value)}
               className="h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
             >
-              <option value="">Tanpa Kategori</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <option value="">Pilih Kategori (Opsional)</option>
+              {categories
+                .filter((c) => c.type === txType)
+                .map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
             </select>
             <input
               type="text"
               value={txDescription}
               onChange={(e) => setTxDescription(e.target.value)}
-              placeholder="Deskripsi transaksi..."
+              placeholder="Catatan / keterangan..."
               className="h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
             />
           </div>
@@ -797,6 +989,97 @@ export function FinanceManager({
               className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] cursor-pointer"
             >
               Simpan Transaksi
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Transfer Antar Akun Form */}
+      {isTransferring && (
+        <form
+          onSubmit={handleTransfer}
+          className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
+        >
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+              <h3 className="text-xs font-medium text-[var(--foreground)]">Transfer Saldo Antar Rekening</h3>
+            </div>
+            <span className="text-[10px] text-[var(--foreground-muted)] font-mono">
+              Memindahkan saldo tanpa memengaruhi cashflow belanja
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+            <div>
+              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Dari Rekening</label>
+              <select
+                value={transferFromAccountId}
+                onChange={(e) => setTransferFromAccountId(e.target.value)}
+                className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+              >
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} ({formatIDR(acc.currentBalance)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Ke Rekening</label>
+              <select
+                value={transferToAccountId}
+                onChange={(e) => setTransferToAccountId(e.target.value)}
+                className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+              >
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id} disabled={acc.id === transferFromAccountId}>
+                    {acc.name} ({formatIDR(acc.currentBalance)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Nominal Transfer (Rp)</label>
+              <input
+                type="number"
+                required
+                autoFocus
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                placeholder="Nominal (Rp)..."
+                className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Keterangan Transfer</label>
+              <input
+                type="text"
+                value={transferDescription}
+                onChange={(e) => setTransferDescription(e.target.value)}
+                placeholder="Contoh: Tarik Tunai ATM, Top up Gopay..."
+                className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsTransferring(false)}
+              className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !transferAmount || transferFromAccountId === transferToAccountId}
+              className="h-8 px-3.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+            >
+              Proses Transfer
             </button>
           </div>
         </form>
@@ -860,29 +1143,84 @@ export function FinanceManager({
 
       {/* Tab 1: Account Overview */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {accounts.length === 0 ? (
-            <div className="col-span-full py-12 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-raised)]/30 text-xs text-[var(--foreground-muted)]">
-              Belum ada akun keuangan terdaftar. Tekan &quot;Tambah Akun&quot; untuk mulai mencatat saldo Anda.
-            </div>
-          ) : (
-            accounts.map((acc) => (
-              <div
-                key={acc.id}
-                className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--foreground)]">{acc.name}</span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
-                    {acc.accountType}
-                  </span>
-                </div>
-                <div className="text-lg font-medium tracking-tight text-[var(--foreground)] tabular-nums">
-                  {formatIDR(acc.currentBalance)}
-                </div>
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Total Saldo Terdaftar</span>
+                <span className="font-semibold text-[var(--foreground)] tabular-nums">{formatIDR(summary.totalBalance)}</span>
               </div>
-            ))
-          )}
+              <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Saldo Bebas (Safe to Spend)</span>
+                <span className="font-semibold text-emerald-500 tabular-nums">{formatIDR(summary.freeBalance || 0)}</span>
+              </div>
+              <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Terkunci di Target Tabungan</span>
+                <span className="font-semibold text-amber-500 tabular-nums">{formatIDR(summary.totalSavingsCurrent || 0)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {accounts.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsTransferring(true)}
+                  className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] cursor-pointer flex items-center gap-1.5"
+                >
+                  <ArrowRightLeft className="w-3 h-3 text-blue-500" />
+                  <span>Transfer Saldo</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsAddingAccount(true)}
+                className="px-2.5 py-1 text-xs rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] font-medium cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Tambah Akun</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {accounts.length === 0 ? (
+              <div className="col-span-full py-12 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-raised)]/30 text-xs text-[var(--foreground-muted)]">
+                Belum ada akun keuangan terdaftar. Tekan &quot;Tambah Akun&quot; untuk mulai mencatat saldo Anda.
+              </div>
+            ) : (
+              accounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-[var(--foreground)]">{acc.name}</span>
+                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                      {acc.accountType}
+                    </span>
+                  </div>
+                  <div className="text-lg font-medium tracking-tight text-[var(--foreground)] tabular-nums">
+                    {formatIDR(acc.currentBalance)}
+                  </div>
+                  <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between text-[10px] text-[var(--foreground-muted)] font-mono">
+                    <span>Saldo Pembukuan Aktif</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransferFromAccountId(acc.id);
+                        setIsTransferring(true);
+                      }}
+                      className="text-blue-500 hover:underline cursor-pointer"
+                    >
+                      Transfer dari sini →
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -948,6 +1286,7 @@ export function FinanceManager({
                   <div className="space-y-1">
                     {grp.items.map((tx) => {
                       const isIncome = tx.type === "income";
+                      const isTransfer = tx.type === "transfer";
 
                       return (
                         <div
@@ -957,18 +1296,31 @@ export function FinanceManager({
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                             <div
                               className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                isIncome
+                                isTransfer
+                                  ? "bg-blue-500/10 text-blue-500"
+                                  : isIncome
                                   ? "bg-[var(--success)]/10 text-[var(--success)]"
                                   : "bg-[var(--danger)]/10 text-[var(--danger)]"
                               }`}
                             >
-                              {isIncome ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                              {isTransfer ? (
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              ) : isIncome ? (
+                                <ArrowDownRight className="w-3.5 h-3.5" />
+                              ) : (
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              )}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="font-medium text-[var(--foreground)] truncate">
-                                  {tx.description || (isIncome ? "Pemasukan" : "Pengeluaran")}
+                                  {tx.description || (isTransfer ? "Transfer Antar Akun" : isIncome ? "Pemasukan" : "Pengeluaran")}
                                 </p>
+                                {isTransfer && (
+                                  <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 flex-shrink-0">
+                                    Transfer
+                                  </span>
+                                )}
                                 {tx.source === "whatsapp_text" && (
                                   <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)] flex-shrink-0">
                                     WhatsApp
@@ -982,6 +1334,7 @@ export function FinanceManager({
                               </div>
                               <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--foreground-muted)] mt-0.5 truncate">
                                 <span>{tx.accountName}</span>
+                                {tx.categoryName && <span>· {tx.categoryName}</span>}
                                 <span>·</span>
                                 <span>
                                   {new Intl.DateTimeFormat("id-ID", {
@@ -996,10 +1349,14 @@ export function FinanceManager({
                           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-1">
                             <span
                               className={`font-mono font-medium tabular-nums whitespace-nowrap ${
-                                isIncome ? "text-[var(--success)]" : "text-[var(--foreground)]"
+                                isTransfer
+                                  ? "text-blue-500"
+                                  : isIncome
+                                  ? "text-[var(--success)]"
+                                  : "text-[var(--foreground)]"
                               }`}
                             >
-                              {isIncome ? "+" : "-"}
+                              {isTransfer ? "⇄ " : isIncome ? "+" : "-"}
                               {formatIDR(Number(tx.amount))}
                             </span>
                             <button
@@ -1021,105 +1378,318 @@ export function FinanceManager({
         </div>
       )}
 
-      {/* Tab 3: Savings Goals */}
+      {/* Tab 3: Target Belanja & Tabungan Masa Depan (Wishlist & Purchase Goals) */}
       {activeTab === "savings" && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-[var(--foreground-muted)]">
-              Target dana tabungan & tujuan finansial
-            </span>
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Total Sasaran Pembelian</span>
+                <span className="font-semibold text-[var(--foreground)] tabular-nums">{formatIDR(summary.totalSavingsTarget || 0)}</span>
+              </div>
+              <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Terkumpul Saat Ini</span>
+                <span className="font-semibold text-emerald-500 tabular-nums">
+                  {formatIDR(summary.totalSavingsCurrent || 0)} ({summary.savingsProgressRate || 0}%)
+                </span>
+              </div>
+              <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+              <div>
+                <span className="text-[10px] text-[var(--foreground-muted)] block">Sisa Dana Dibutuhkan</span>
+                <span className="font-semibold text-amber-500 tabular-nums">
+                  {formatIDR(Math.max(0, (summary.totalSavingsTarget || 0) - (summary.totalSavingsCurrent || 0)))}
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={() => setIsAddingSavings(!isAddingSavings)}
-              className="text-xs text-[var(--foreground)] hover:underline flex items-center gap-1 cursor-pointer"
+              className="h-8 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] font-medium cursor-pointer flex items-center gap-1.5 text-xs shadow-sm"
             >
-              <Plus className="w-3 h-3" />
-              <span>Tambah Target Tabungan</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Target Pembelian Baru</span>
             </button>
           </div>
 
+          {/* Add Goal Form */}
           {isAddingSavings && (
             <form
               onSubmit={handleCreateSavings}
-              className="p-3.5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] space-y-2.5"
+              className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  value={savingsTitle}
-                  onChange={(e) => setSavingsTitle(e.target.value)}
-                  placeholder="Nama target (misal: Dana Darurat, Liburan)..."
-                  className="h-8 px-2.5 text-xs rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
-                />
-                <input
-                  type="number"
-                  required
-                  value={savingsTarget}
-                  onChange={(e) => setSavingsTarget(e.target.value)}
-                  placeholder="Target nominal (Rp)..."
-                  className="h-8 px-2.5 text-xs rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
-                />
+              <h3 className="text-xs font-semibold text-[var(--foreground)] pb-2 border-b border-[var(--border)] flex items-center gap-2">
+                <Target className="w-4 h-4 text-purple-500" />
+                Tambah Rencana Belanja / Target Masa Depan
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Mau Beli Apa / Nama Target</label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={savingsTitle}
+                    onChange={(e) => setSavingsTitle(e.target.value)}
+                    placeholder="Contoh: MacBook M3, DP Motor, Liburan..."
+                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Target Nominal (Rp)</label>
+                  <input
+                    type="number"
+                    required
+                    value={savingsTarget}
+                    onChange={(e) => setSavingsTarget(e.target.value)}
+                    placeholder="Contoh: 15000000..."
+                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Rekening Penampung</label>
+                  <select
+                    value={savingsAccountId}
+                    onChange={(e) => setSavingsAccountId(e.target.value)}
+                    className="w-full h-9 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({formatIDR(acc.currentBalance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--foreground-muted)] block mb-1">Target Tanggal Mau Terbeli (Opsional)</label>
+                  <input
+                    type="date"
+                    value={savingsTargetDate}
+                    onChange={(e) => setSavingsTargetDate(e.target.value)}
+                    className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                  />
+                </div>
               </div>
+
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsAddingSavings(false)}
-                  className="h-7 px-2.5 text-xs text-[var(--foreground-muted)] cursor-pointer"
+                  className="h-8 px-3 text-xs rounded text-[var(--foreground-muted)] cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isPending || !savingsTitle.trim() || !savingsTarget}
-                  className="h-7 px-3 text-xs font-medium rounded bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] cursor-pointer"
+                  className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] cursor-pointer"
                 >
-                  Simpan Target
+                  Simpan Rencana Target
                 </button>
               </div>
             </form>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Savings Goals Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {savings.length === 0 ? (
               <div className="col-span-full py-12 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-raised)]/30 text-xs text-[var(--foreground-muted)]">
-                Belum ada target tabungan yang dibuat.
+                Belum ada target pembelian yang dibuat. Tekan tombol &quot;Target Pembelian Baru&quot; untuk merencanakan barang impian atau dana tabungan Anda.
               </div>
             ) : (
               savings.map((s) => {
                 const target = Number(s.targetAmount) || 1;
                 const current = Number(s.currentAmount) || 0;
                 const progressPct = Math.min(100, Math.round((current / target) * 100));
+                const remaining = Math.max(0, target - current);
+                const isComplete = current >= target;
+
+                // Hitung estimasi waktu tercapai berdasarkan monthlyNetSavings
+                let velocityEstimate = "";
+                if (isComplete) {
+                  velocityEstimate = "🎉 Target sudah tercapai 100%! Siap untuk dibeli.";
+                } else if (summary.monthlyNetSavings > 0) {
+                  const monthsLeft = Math.ceil(remaining / summary.monthlyNetSavings);
+                  velocityEstimate = `Estimasi terbeli dalam ~${monthsLeft} bulan berdasarkan laju tabungan Anda (${formatIDR(summary.monthlyNetSavings)}/bulan)`;
+                } else {
+                  velocityEstimate = "Arus kas saat ini sedang defisit atau belum mencatat surplus bulanan.";
+                }
+
+                // Hitung kebutuhan tabungan bulanan jika ada targetDate
+                let deadlineInfo = "";
+                if (s.targetDate && !isComplete) {
+                  const targetTime = new Date(s.targetDate).getTime();
+                  const nowTime = new Date().getTime();
+                  const diffDays = Math.max(1, Math.round((targetTime - nowTime) / (1000 * 60 * 60 * 24)));
+                  const diffMonths = Math.max(1, Math.round(diffDays / 30));
+                  const neededPerMonth = Math.round(remaining / diffMonths);
+                  deadlineInfo = `Deadline: ${new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric" }).format(new Date(s.targetDate))} (Perlu ${formatIDR(neededPerMonth)}/bulan)`;
+                }
 
                 return (
                   <div
                     key={s.id}
-                    className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2.5"
+                    className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-3 flex flex-col justify-between"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-[var(--foreground)] flex items-center gap-1.5">
-                        <PiggyBank className="w-3.5 h-3.5 text-amber-500" />
-                        {s.title}
-                      </span>
-                      <span className="text-[10px] font-mono text-[var(--foreground-muted)]">
-                        {progressPct}%
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Target className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                          <h4 className="text-xs font-semibold text-[var(--foreground)] truncate">
+                            {s.title}
+                          </h4>
+                        </div>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-medium border ${
+                          isComplete
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                            : "bg-[var(--surface-raised)] border-[var(--border)] text-[var(--foreground-muted)]"
+                        }`}>
+                          {progressPct}% {isComplete && "TERCAPAI"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-[12px] font-semibold text-[var(--foreground)] tabular-nums">
+                          {formatIDR(current)}
+                        </span>
+                        <span className="text-[11px] text-[var(--foreground-muted)] tabular-nums">
+                          Target: {formatIDR(target)}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-[var(--surface-raised)] h-2 rounded-full overflow-hidden border border-[var(--border)]">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isComplete ? "bg-emerald-500" : "bg-[var(--foreground)]"
+                          }`}
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+
+                      {/* Velocity & Deadline Intelligence */}
+                      <div className="p-2 rounded-lg bg-[var(--surface-raised)]/40 border border-[var(--border)]/50 space-y-1 text-[10px]">
+                        <p className="text-[var(--foreground-muted)] flex items-center gap-1.5">
+                          <Clock className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                          <span>{velocityEstimate}</span>
+                        </p>
+                        {deadlineInfo && (
+                          <p className="text-purple-500 font-mono flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 flex-shrink-0" />
+                            <span>{deadlineInfo}</span>
+                          </p>
+                        )}
+                        <p className="text-[var(--foreground-muted)] font-mono">
+                          {s.accountName ? `Rekening Sumber: ${s.accountName}` : "Rekening: Akun Umum"} · Sisa: {formatIDR(remaining)}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-[11px] text-[var(--foreground)]">
-                        {formatIDR(current)}
-                      </span>
-                      <span className="text-[11px] text-[var(--foreground-muted)]">
-                        Target: {formatIDR(target)}
-                      </span>
-                    </div>
+                    {/* Action Panel for Setor / Tarik */}
+                    <div className="pt-2 border-t border-[var(--border)] space-y-2">
+                      {activeGoalAction?.goalId === s.id ? (
+                        <div className="p-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] space-y-2 text-xs">
+                          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--foreground)]">
+                            <span>{activeGoalAction.mode === "deposit" ? "Setor Tabungan ke Target" : "Tarik Dana dari Target"}</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveGoalAction(null)}
+                              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                          </div>
 
-                    <div className="w-full bg-[var(--surface-raised)] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[var(--foreground)] opacity-80 transition-all"
-                        style={{ width: `${progressPct}%` }}
-                      />
+                          <div className="grid grid-cols-2 gap-2">
+                            <select
+                              value={goalActionAccountId}
+                              onChange={(e) => setGoalActionAccountId(e.target.value)}
+                              className="h-8 px-2 text-[11px] rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+                            >
+                              {accounts.map((acc) => (
+                                <option key={acc.id} value={acc.id}>
+                                  {acc.name} ({formatIDR(acc.currentBalance)})
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="number"
+                              autoFocus
+                              value={goalActionAmount}
+                              onChange={(e) => setGoalActionAmount(e.target.value)}
+                              placeholder="Nominal (Rp)..."
+                              className="h-8 px-2.5 text-[11px] rounded bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] font-mono focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-end gap-1.5 pt-0.5">
+                            <button
+                              type="button"
+                              disabled={isPending || !goalActionAmount}
+                              onClick={() => {
+                                if (activeGoalAction.mode === "deposit") {
+                                  handleGoalDeposit(s.id);
+                                } else {
+                                  handleGoalWithdraw(s.id);
+                                }
+                              }}
+                              className={`h-7 px-3 text-[11px] font-medium rounded text-white cursor-pointer ${
+                                activeGoalAction.mode === "deposit"
+                                  ? "bg-emerald-600 hover:bg-emerald-700"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              }`}
+                            >
+                              {activeGoalAction.mode === "deposit" ? "Konfirmasi Setor" : "Konfirmasi Tarik"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveGoalAction({ goalId: s.id, mode: "deposit" });
+                                setGoalActionAccountId(s.financeAccountId || accounts[0]?.id || "");
+                                setGoalActionAmount("");
+                              }}
+                              className="h-7 px-2.5 text-[11px] font-medium rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              <ArrowDownCircle className="w-3 h-3 text-emerald-500" />
+                              <span>Setor Dana</span>
+                            </button>
+
+                            {current > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveGoalAction({ goalId: s.id, mode: "withdraw" });
+                                  setGoalActionAccountId(s.financeAccountId || accounts[0]?.id || "");
+                                  setGoalActionAmount("");
+                                }}
+                                className="h-7 px-2.5 text-[11px] font-medium rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <ArrowUpCircle className="w-3 h-3 text-blue-500" />
+                                <span>Tarik Dana</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGoal(s.id)}
+                            className="p-1 text-[var(--foreground-muted)] hover:text-[var(--danger)] rounded cursor-pointer"
+                            title="Hapus target"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

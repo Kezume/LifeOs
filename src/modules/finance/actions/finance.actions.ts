@@ -9,10 +9,14 @@ import {
   createCategorySchema,
   createTransactionSchema,
   createSavingsGoalSchema,
+  depositToSavingsGoalSchema,
+  withdrawFromSavingsGoalSchema,
   CreateAccountInput,
   CreateCategoryInput,
   CreateTransactionInput,
   CreateSavingsGoalInput,
+  DepositToSavingsGoalInput,
+  WithdrawFromSavingsGoalInput,
 } from "../schemas/finance.schema";
 import { eq, and } from "drizzle-orm";
 
@@ -123,9 +127,116 @@ export async function createSavingsGoalAction(data: CreateSavingsGoalInput) {
       targetAmount: parsed.targetAmount,
       currentAmount: parsed.currentAmount || "0",
       targetDate: parsed.targetDate ? new Date(parsed.targetDate) : null,
+      financeAccountId: parsed.financeAccountId || null,
     })
     .returning();
 
   revalidatePath("/finance");
+  revalidatePath("/dashboard");
   return { success: true, savingsGoal: goal };
+}
+
+export async function depositToSavingsGoalAction(data: DepositToSavingsGoalInput) {
+  const user = await requireUser();
+  const parsed = depositToSavingsGoalSchema.parse(data);
+
+  const [goal] = await db
+    .select()
+    .from(savingsGoals)
+    .where(and(eq(savingsGoals.id, parsed.goalId), eq(savingsGoals.userId, user.id)))
+    .limit(1);
+
+  if (!goal) {
+    throw new Error("Target tabungan tidak ditemukan");
+  }
+
+  const depositAmt = Number(parsed.amount);
+  if (isNaN(depositAmt) || depositAmt <= 0) {
+    throw new Error("Nominal setoran tidak valid");
+  }
+
+  // 1. Catat transaksi alokasi/pengeluaran dari akun terpilih
+  await db.insert(financeTransactions).values({
+    userId: user.id,
+    accountId: parsed.accountId,
+    type: "expense",
+    amount: parsed.amount,
+    description: `Setoran Target: ${goal.title}`,
+    transactionDate: new Date(),
+  });
+
+  // 2. Tambah saldo terkumpul pada target
+  const newAmount = Number(goal.currentAmount || 0) + depositAmt;
+  const [updatedGoal] = await db
+    .update(savingsGoals)
+    .set({
+      currentAmount: String(newAmount),
+      updatedAt: new Date(),
+    })
+    .where(eq(savingsGoals.id, goal.id))
+    .returning();
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true, savingsGoal: updatedGoal };
+}
+
+export async function withdrawFromSavingsGoalAction(data: WithdrawFromSavingsGoalInput) {
+  const user = await requireUser();
+  const parsed = withdrawFromSavingsGoalSchema.parse(data);
+
+  const [goal] = await db
+    .select()
+    .from(savingsGoals)
+    .where(and(eq(savingsGoals.id, parsed.goalId), eq(savingsGoals.userId, user.id)))
+    .limit(1);
+
+  if (!goal) {
+    throw new Error("Target tabungan tidak ditemukan");
+  }
+
+  const withdrawAmt = Number(parsed.amount);
+  if (isNaN(withdrawAmt) || withdrawAmt <= 0) {
+    throw new Error("Nominal penarikan tidak valid");
+  }
+
+  const currentAmt = Number(goal.currentAmount || 0);
+  const actualWithdraw = Math.min(currentAmt, withdrawAmt);
+
+  // 1. Catat transaksi pemasukan kembali ke akun
+  await db.insert(financeTransactions).values({
+    userId: user.id,
+    accountId: parsed.accountId,
+    type: "income",
+    amount: String(actualWithdraw),
+    description: `Penarikan Target: ${goal.title}`,
+    transactionDate: new Date(),
+  });
+
+  // 2. Kurangi saldo terkumpul pada target
+  const newAmount = Math.max(0, currentAmt - actualWithdraw);
+  const [updatedGoal] = await db
+    .update(savingsGoals)
+    .set({
+      currentAmount: String(newAmount),
+      updatedAt: new Date(),
+    })
+    .where(eq(savingsGoals.id, goal.id))
+    .returning();
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true, savingsGoal: updatedGoal };
+}
+
+export async function deleteSavingsGoalAction(goalId: string) {
+  const user = await requireUser();
+
+  await db
+    .delete(savingsGoals)
+    .where(and(eq(savingsGoals.id, goalId), eq(savingsGoals.userId, user.id)));
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true };
 }

@@ -88,8 +88,18 @@ export async function getUserTransactions(userId: string) {
 
 export async function getUserSavingsGoals(userId: string) {
   return db
-    .select()
+    .select({
+      id: savingsGoals.id,
+      title: savingsGoals.title,
+      targetAmount: savingsGoals.targetAmount,
+      currentAmount: savingsGoals.currentAmount,
+      targetDate: savingsGoals.targetDate,
+      financeAccountId: savingsGoals.financeAccountId,
+      accountName: financeAccounts.name,
+      createdAt: savingsGoals.createdAt,
+    })
     .from(savingsGoals)
+    .leftJoin(financeAccounts, eq(savingsGoals.financeAccountId, financeAccounts.id))
     .where(eq(savingsGoals.userId, userId))
     .orderBy(desc(savingsGoals.createdAt));
 }
@@ -101,8 +111,16 @@ export interface CategoryStatItem {
   percentage: number;
 }
 
+export interface FinancialAdvice {
+  type: "warning" | "success" | "info" | "tip";
+  title: string;
+  description: string;
+  metric?: string;
+}
+
 export interface FinanceSummary {
   totalBalance: number;
+  freeBalance: number;
   todayIncome: number;
   todayExpense: number;
   monthlyIncome: number;
@@ -118,6 +136,7 @@ export interface FinanceSummary {
   expenseCount: number;
   dailyAvgExpense: number;
   avgExpensePerTx: number;
+  safeDailySpend: number;
   expenseToIncomeRatio: number;
   largestExpense: {
     description: string;
@@ -127,6 +146,7 @@ export interface FinanceSummary {
   totalSavingsTarget: number;
   totalSavingsCurrent: number;
   savingsProgressRate: number;
+  financialAdvice: FinancialAdvice[];
 }
 
 export async function getFinanceSummary(userId: string): Promise<FinanceSummary> {
@@ -232,13 +252,88 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
   const allTimeNetSavings = allTimeIncome - allTimeExpense;
 
   const currentDay = Math.max(1, now.getDate());
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = Math.max(1, daysInMonth - currentDay + 1);
   const dailyAvgExpense = Math.round(monthlyExpense / currentDay);
   const avgExpensePerTx = expenseCount > 0 ? Math.round(allTimeExpense / expenseCount) : 0;
   const expenseToIncomeRatio =
     allTimeIncome > 0 ? Math.round((allTimeExpense / allTimeIncome) * 100) : 0;
 
+  const freeBalance = Math.max(0, totalBalance - totalSavingsCurrent);
+  const safeRemainingBudget = Math.max(
+    0,
+    monthlyIncome > 0 ? Math.round(monthlyIncome * 0.75 - monthlyExpense) : 0
+  );
+  const safeDailySpend = Math.round(safeRemainingBudget / daysRemaining);
+
+  const formatIDRText = (val: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  const financialAdvice: FinancialAdvice[] = [];
+
+  // Advice 1: Cashflow Health & Surplus
+  if (monthlyIncome > 0 && monthlyNetSavings < 0) {
+    financialAdvice.push({
+      type: "warning",
+      title: "Peringatan Defisit Cashflow",
+      description: `Pengeluaran bulan ini melebihi pemasukan sebesar ${formatIDRText(monthlyExpense - monthlyIncome)}. Anda berisiko memakan tabungan pokok jika tidak dikendalikan.`,
+      metric: `Defisit ${formatIDRText(monthlyExpense - monthlyIncome)}`,
+    });
+  } else if (monthlyIncome > 0 && monthlySavingsRate >= 20) {
+    financialAdvice.push({
+      type: "success",
+      title: "Arus Kas Sangat Sehat",
+      description: `Anda berhasil menyisihkan ${monthlySavingsRate}% pemasukan bulan ini (${formatIDRText(monthlyNetSavings)}). Surplus ini siap dialokasikan ke target belanja masa depan.`,
+      metric: `${monthlySavingsRate}% Tersimpan`,
+    });
+  } else if (monthlyIncome > 0) {
+    financialAdvice.push({
+      type: "tip",
+      title: "Optimalkan Rasio Tabungan",
+      description: `Saat ini Anda menyisihkan ${monthlySavingsRate}% pemasukan. Standar finansial sehat merekomendasikan minimal 20% langsung diamankan ke tabungan.`,
+      metric: "Target Tabungan: 20%",
+    });
+  }
+
+  // Advice 2: Batas Belanja Aman Harian
+  if (monthlyIncome > 0) {
+    financialAdvice.push({
+      type: "info",
+      title: "Batas Belanja Aman Harian",
+      description: `Agar cashflow tetap surplus di akhir bulan, batasi pengeluaran maksimal ${formatIDRText(safeDailySpend)} / hari untuk ${daysRemaining} hari ke depan.`,
+      metric: `${formatIDRText(safeDailySpend)} / hari`,
+    });
+  }
+
+  // Advice 3: Kategori Pengeluaran Terbesar
+  if (topExpenseCategories.length > 0 && topExpenseCategories[0].percentage >= 30) {
+    const topCat = topExpenseCategories[0];
+    financialAdvice.push({
+      type: "warning",
+      title: `Konsentrasi Belanja di ${topCat.name}`,
+      description: `Kategori ${topCat.name} menyerap ${topCat.percentage}% (${formatIDRText(topCat.amount)}) dari seluruh pengeluaran Anda. Batasi belanja di pos ini untuk menambah tabungan.`,
+      metric: `${topCat.percentage}% total belanja`,
+    });
+  }
+
+  // Advice 4: Saldo Bebas vs Saldo Terkunci
+  if (totalSavingsCurrent > 0) {
+    financialAdvice.push({
+      type: "tip",
+      title: "Pemisahan Saldo Bebas (Safe to Spend)",
+      description: `Dari total saldo ${formatIDRText(totalBalance)}, sebesar ${formatIDRText(totalSavingsCurrent)} sudah dialokasikan ke target tabungan. Saldo bebas belanja Anda adalah ${formatIDRText(freeBalance)}.`,
+      metric: `${formatIDRText(freeBalance)} Bebas`,
+    });
+  }
+
   return {
     totalBalance,
+    freeBalance,
     todayIncome,
     todayExpense,
     monthlyIncome,
@@ -254,11 +349,13 @@ export async function getFinanceSummary(userId: string): Promise<FinanceSummary>
     expenseCount,
     dailyAvgExpense,
     avgExpensePerTx,
+    safeDailySpend,
     expenseToIncomeRatio,
     largestExpense: largestExpenseItem,
     topExpenseCategories,
     totalSavingsTarget,
     totalSavingsCurrent,
     savingsProgressRate,
+    financialAdvice,
   };
 }
