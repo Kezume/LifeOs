@@ -12,6 +12,8 @@ import {
   TrendingUp,
   BarChart3,
   PieChart,
+  Receipt,
+  Tag,
 } from "lucide-react";
 import {
   createAccountAction,
@@ -22,6 +24,7 @@ import {
 import { WhatsAppSyncCard } from "./whatsapp-sync-card";
 import { UserWhatsappConnection } from "@/lib/db/schema";
 import { DonutChart, DonutSegment } from "@/components/ui/donut-chart";
+import { FinanceSummary } from "../queries/finance.queries";
 
 interface AccountItem {
   id: string;
@@ -58,25 +61,6 @@ interface SavingsItem {
   targetAmount: string;
   currentAmount: string;
   targetDate: Date | null;
-}
-
-interface FinanceSummary {
-  totalBalance: number;
-  monthlyIncome: number;
-  monthlyExpense: number;
-  todayIncome?: number;
-  todayExpense?: number;
-  monthlyNetSavings?: number;
-  monthlySavingsRate?: number;
-  allTimeIncome?: number;
-  allTimeExpense?: number;
-  allTimeNetSavings?: number;
-  accountCount?: number;
-  totalTransactionsCount?: number;
-  dailyAvgExpense?: number;
-  totalSavingsTarget?: number;
-  totalSavingsCurrent?: number;
-  savingsProgressRate?: number;
 }
 
 export function FinanceManager({
@@ -223,6 +207,8 @@ export function FinanceManager({
     return true; // all_time
   });
 
+  const [financeChartMode, setFinanceChartMode] = useState<"category" | "cashflow" | "accounts">("category");
+
   const accountSegments: DonutSegment[] = accounts
     .filter((a) => a.currentBalance > 0)
     .map((acc, idx) => ({
@@ -238,6 +224,63 @@ export function FinanceManager({
       ][idx % 6],
       formattedValue: formatIDR(acc.currentBalance),
     }));
+
+  const categorySegments: DonutSegment[] = (summary.topExpenseCategories || [])
+    .slice(0, 6)
+    .filter((cat) => cat.amount > 0)
+    .map((cat, idx) => ({
+      name: cat.name,
+      value: cat.amount,
+      color: [
+        "var(--danger)",
+        "var(--domain-work)",
+        "var(--domain-learning)",
+        "var(--domain-goals)",
+        "var(--domain-life)",
+        "var(--domain-knowledge)",
+      ][idx % 6],
+      formattedValue: formatIDR(cat.amount),
+    }));
+
+  const cashflowSegments: DonutSegment[] = [
+    {
+      name: "Pengeluaran",
+      value: expenseValue > 0 ? expenseValue : 1,
+      color: "var(--danger)",
+      formattedValue: formatIDR(expenseValue),
+    },
+    {
+      name: "Tabungan Bersih",
+      value: Math.max(1, incomeValue - expenseValue),
+      color: "var(--success)",
+      formattedValue: formatIDR(Math.max(0, incomeValue - expenseValue)),
+    },
+  ];
+
+  const activeDonutSegments =
+    financeChartMode === "category"
+      ? categorySegments.length > 0
+        ? categorySegments
+        : [{ name: "Belanja", value: expenseValue || 1, color: "var(--danger)", formattedValue: formatIDR(expenseValue) }]
+      : financeChartMode === "cashflow"
+      ? cashflowSegments
+      : accountSegments.length > 0
+      ? accountSegments
+      : [{ name: "Saldo", value: summary.totalBalance || 1, color: "var(--domain-finance)", formattedValue: formatIDR(summary.totalBalance) }];
+
+  const activeCenterLabel =
+    financeChartMode === "category"
+      ? formatIDR(expenseValue).replace(/(\.00|,00)$/, "")
+      : financeChartMode === "cashflow"
+      ? `${summary.monthlySavingsRate || 0}%`
+      : formatIDR(summary.totalBalance).replace(/(\.00|,00)$/, "");
+
+  const activeCenterSublabel =
+    financeChartMode === "category"
+      ? "Total Belanja"
+      : financeChartMode === "cashflow"
+      ? "Rasio Tabungan"
+      : "Total Saldo";
 
   return (
     <div className="space-y-6 select-none">
@@ -399,61 +442,195 @@ export function FinanceManager({
         </div>
       </div>
 
-      {/* Donut Chart: Financial Allocation & Statistics */}
-      <div className="p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col lg:flex-row items-center justify-between gap-6">
-        <div className="space-y-2 max-w-sm w-full">
-          <div className="flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
-            <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
-              Statistik Distribusi Saldo & Alokasi
-            </h3>
+      {/* Donut Chart & Cashflow Intelligence Rack */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left (7 cols): Donut Chart with View Mode Switcher */}
+        <div className="lg:col-span-7 p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
+              <div>
+                <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+                  {financeChartMode === "category"
+                    ? "Distribusi Pengeluaran per Kategori"
+                    : financeChartMode === "cashflow"
+                    ? "Rasio Arus Kas (Masuk vs Keluar)"
+                    : "Alokasi Saldo Akun & E-Wallet"}
+                </h3>
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  {financeChartMode === "category"
+                    ? "Proporsi belanja berdasarkan pos kategori pengeluaran"
+                    : financeChartMode === "cashflow"
+                    ? "Perbandingan uang masuk terhadap pengeluaran & tabungan"
+                    : "Sebaran likuiditas kekayaan di seluruh rekening"}
+                </p>
+              </div>
+            </div>
+
+            {/* Mode Switcher */}
+            <div className="inline-flex p-0.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-medium self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setFinanceChartMode("category")}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  financeChartMode === "category"
+                    ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold shadow-xs"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                Kategori
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinanceChartMode("cashflow")}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  financeChartMode === "cashflow"
+                    ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold shadow-xs"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                Arus Kas
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinanceChartMode("accounts")}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  financeChartMode === "accounts"
+                    ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold shadow-xs"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                Akun
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
-            Visualisasi proporsi kekayaan di seluruh rekening, dompet digital, dan pos alokasi dana Anda.
-          </p>
-          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs font-mono">
-            <span className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground-muted)]">
-              {accounts.length} Akun Terdaftar
+
+          <div className="flex justify-center py-1">
+            <DonutChart
+              segments={activeDonutSegments}
+              centerLabel={activeCenterLabel}
+              centerSublabel={activeCenterSublabel}
+              size={155}
+              strokeWidth={16}
+              showLegend={true}
+              legendPosition="right"
+            />
+          </div>
+
+          <div className="pt-2 border-t border-[var(--border)]/50 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--foreground-muted)]">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[var(--success)]" />
+              Masuk: {formatIDR(incomeValue)}
             </span>
-            {summary.monthlySavingsRate !== undefined && (
-              <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-medium">
-                {summary.monthlySavingsRate}% Rasio Tabungan
-              </span>
-            )}
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[var(--danger)]" />
+              Keluar: {formatIDR(expenseValue)}
+            </span>
+            <span className="text-[var(--foreground)] font-medium">
+              Net: {incomeValue - expenseValue >= 0 ? "+" : ""}{formatIDR(incomeValue - expenseValue)}
+            </span>
           </div>
         </div>
 
-        <div className="w-full lg:w-auto flex justify-center">
-          <DonutChart
-            segments={
-              accountSegments.length > 0
-                ? accountSegments
-                : [
-                    {
-                      name: "Pengeluaran",
-                      value: expenseValue > 0 ? expenseValue : 1,
-                      color: "var(--danger)",
-                      formattedValue: formatIDR(expenseValue),
-                    },
-                    {
-                      name: "Tabungan Bersih",
-                      value: Math.max(1, incomeValue - expenseValue),
-                      color: "var(--success)",
-                      formattedValue: formatIDR(Math.max(0, incomeValue - expenseValue)),
-                    },
-                  ]
-            }
-            centerLabel={
-              accountSegments.length > 0
-                ? formatIDR(summary.totalBalance).replace(/(\.00|,00)$/, "")
-                : `${summary.monthlySavingsRate || 0}%`
-            }
-            centerSublabel={accountSegments.length > 0 ? "Total Saldo" : "Tabungan"}
-            size={160}
-            strokeWidth={16}
-            showLegend={true}
-            legendPosition="right"
-          />
+        {/* Right (5 cols): Cashflow & Expense Intelligence Metrics */}
+        <div className="lg:col-span-5 p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col justify-between gap-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-blue-500" strokeWidth={1.5} />
+              <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+                Intelijen Arus Kas & Belanja
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground-muted)]">
+              {summary.totalTransactionsCount || 0} total transaksi
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-2.5 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] space-y-1">
+              <div className="text-[10px] text-[var(--foreground-muted)] flex items-center justify-between">
+                <span>Uang Masuk</span>
+                <ArrowDownRight className="w-3 h-3 text-[var(--success)]" />
+              </div>
+              <div className="text-sm font-semibold text-[var(--success)] tabular-nums truncate">
+                {formatIDR(incomeValue)}
+              </div>
+              <div className="text-[9px] font-mono text-[var(--foreground-muted)]">
+                {summary.incomeCount || 0} kali transaksi
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] space-y-1">
+              <div className="text-[10px] text-[var(--foreground-muted)] flex items-center justify-between">
+                <span>Uang Keluar</span>
+                <ArrowUpRight className="w-3 h-3 text-[var(--danger)]" />
+              </div>
+              <div className="text-sm font-semibold text-[var(--danger)] tabular-nums truncate">
+                {formatIDR(expenseValue)}
+              </div>
+              <div className="text-[9px] font-mono text-[var(--foreground-muted)]">
+                {summary.expenseCount || 0} kali transaksi
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] space-y-1">
+              <div className="text-[10px] text-[var(--foreground-muted)]">
+                Rata-rata / Belanja
+              </div>
+              <div className="text-sm font-semibold text-[var(--foreground)] tabular-nums truncate">
+                {formatIDR(summary.avgExpensePerTx || 0)}
+              </div>
+              <div className="text-[9px] font-mono text-[var(--foreground-muted)]">
+                Beban: {summary.expenseToIncomeRatio || 0}% pemasukan
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-[var(--surface-raised)]/60 border border-[var(--border)] space-y-1">
+              <div className="text-[10px] text-[var(--foreground-muted)]">
+                Pengeluaran Terbesar
+              </div>
+              <div className="text-sm font-semibold text-[var(--foreground)] tabular-nums truncate">
+                {summary.largestExpense ? formatIDR(summary.largestExpense.amount) : "-"}
+              </div>
+              <div className="text-[9px] text-[var(--foreground-muted)] truncate font-mono">
+                {summary.largestExpense ? summary.largestExpense.description : "Belum ada"}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Categories Mini Progress List */}
+          {summary.topExpenseCategories && summary.topExpenseCategories.length > 0 && (
+            <div className="pt-2.5 border-t border-[var(--border)] space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-medium text-[var(--foreground)] flex items-center gap-1.5">
+                  <Tag className="w-3 h-3 text-amber-500" />
+                  Top Kategori Pengeluaran
+                </span>
+                <span className="font-mono text-[10px] text-[var(--foreground-muted)]">
+                  {summary.topExpenseCategories.length} kategori
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {summary.topExpenseCategories.slice(0, 3).map((cat) => (
+                  <div key={cat.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[var(--foreground)] truncate">{cat.name}</span>
+                      <span className="font-mono text-[10px] text-[var(--foreground-muted)]">
+                        {formatIDR(cat.amount)} ({cat.percentage}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-[var(--surface-raised)] h-1 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--danger)] rounded-full transition-all"
+                        style={{ width: `${Math.min(100, cat.percentage)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

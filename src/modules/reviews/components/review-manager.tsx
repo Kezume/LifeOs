@@ -44,6 +44,7 @@ export function ReviewManager({
   overallStats: LifeReviewOverallStats;
 }) {
   const [activeTab, setActiveTab] = useState<"form" | "stats" | "history">("form");
+  const [reviewChartMode, setReviewChartMode] = useState<"achievements" | "ecosystem">("achievements");
   const [highlights, setHighlights] = useState(currentReview?.highlights || "");
   const [challenges, setChallenges] = useState(currentReview?.challenges || "");
   const [reflection, setReflection] = useState(currentReview?.reflection || "");
@@ -71,7 +72,40 @@ export function ReviewManager({
     });
   };
 
-  const reviewDonutSegments: DonutSegment[] = [
+  const achievementSegments: DonutSegment[] = [
+    {
+      name: "Tugas Tuntas",
+      value: Math.max(1, overallStats.tasks.completed),
+      color: "var(--domain-life)",
+      formattedValue: `${overallStats.tasks.completed} tugas`,
+    },
+    {
+      name: "Target Tercapai",
+      value: Math.max(1, overallStats.goals.completed),
+      color: "var(--domain-goals)",
+      formattedValue: `${overallStats.goals.completed} target`,
+    },
+    {
+      name: "Proyek Selesai",
+      value: Math.max(1, overallStats.projects.completed),
+      color: "var(--domain-work)",
+      formattedValue: `${overallStats.projects.completed} proyek`,
+    },
+    {
+      name: "Waktu Belajar",
+      value: Math.max(1, Math.round(overallStats.learning.totalHours * 2) || 1),
+      color: "var(--domain-learning)",
+      formattedValue: `${overallStats.learning.totalHours} jam`,
+    },
+    {
+      name: "Habit Streak",
+      value: Math.max(1, overallStats.routines.streakDays),
+      color: "var(--warning)",
+      formattedValue: `${overallStats.routines.streakDays} hari`,
+    },
+  ];
+
+  const ecosystemSegments: DonutSegment[] = [
     {
       name: "Tugas & Rutinitas",
       value: Math.max(1, overallStats.tasks.total + overallStats.routines.total),
@@ -184,32 +218,71 @@ export function ReviewManager({
 
       {/* 2. Donut Chart: Overall Life Balance & Execution */}
       <div className="p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col lg:flex-row items-center justify-between gap-6">
-        <div className="space-y-2 max-w-sm w-full">
-          <div className="flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
-            <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
-              Distribusi Keseimbangan Hidup
-            </h3>
+        <div className="space-y-3 max-w-sm w-full">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
+              <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+                {reviewChartMode === "achievements" ? "Distribusi Capaian Tuntas" : "Kapasitas Ekosistem Total"}
+              </h3>
+            </div>
+            {/* Mode Switcher */}
+            <div className="inline-flex p-0.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[10px] font-medium">
+              <button
+                type="button"
+                onClick={() => setReviewChartMode("achievements")}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  reviewChartMode === "achievements"
+                    ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold shadow-xs"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                Capaian
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewChartMode("ecosystem")}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  reviewChartMode === "ecosystem"
+                    ? "bg-[var(--surface-card)] text-[var(--foreground)] font-semibold shadow-xs"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                Total
+              </button>
+            </div>
           </div>
+
           <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
-            Visualisasi keseimbangan antara eksekusi tugas, kedisiplinan rutinitas harian, jam belajar, dan capaian target hidup.
+            {reviewChartMode === "achievements"
+              ? "Evaluasi alokasi hasil & kemenangan yang berhasil diselesaikan pada periode review ini."
+              : "Proporsi seluruh pilar kehidupan yang sedang dikelola secara aktif (sinkron dengan Dashboard)."}
           </p>
-          <div className="pt-2 flex items-center gap-3 text-xs font-mono text-[var(--foreground-muted)]">
+
+          <div className="pt-1 flex items-center gap-3 text-xs font-mono text-[var(--foreground-muted)]">
             <span className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)]">
               {overallStats.totalReviews} Sesi Review
             </span>
             <span>·</span>
             <span className="text-[var(--foreground)] font-medium">
-              {overallStats.tasks.completionRate}% Tingkat Tugas
+              {overallStats.tasks.completionRate}% Tingkat Sukses
             </span>
           </div>
         </div>
 
         <div className="w-full lg:w-auto flex justify-center">
           <DonutChart
-            segments={reviewDonutSegments}
-            centerLabel={`Lvl ${overallStats.gamification.level}`}
-            centerSublabel={`${overallStats.gamification.totalXp} XP`}
+            segments={reviewChartMode === "achievements" ? achievementSegments : ecosystemSegments}
+            centerLabel={
+              reviewChartMode === "achievements"
+                ? `${overallStats.tasks.completionRate}%`
+                : `Lvl ${overallStats.gamification.level}`
+            }
+            centerSublabel={
+              reviewChartMode === "achievements"
+                ? "Tingkat Sukses"
+                : `${overallStats.gamification.totalXp} XP`
+            }
             size={160}
             strokeWidth={16}
             showLegend={true}

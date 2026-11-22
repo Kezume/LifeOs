@@ -94,7 +94,42 @@ export async function getUserSavingsGoals(userId: string) {
     .orderBy(desc(savingsGoals.createdAt));
 }
 
-export async function getFinanceSummary(userId: string) {
+export interface CategoryStatItem {
+  name: string;
+  amount: number;
+  count: number;
+  percentage: number;
+}
+
+export interface FinanceSummary {
+  totalBalance: number;
+  todayIncome: number;
+  todayExpense: number;
+  monthlyIncome: number;
+  monthlyExpense: number;
+  monthlyNetSavings: number;
+  monthlySavingsRate: number;
+  allTimeIncome: number;
+  allTimeExpense: number;
+  allTimeNetSavings: number;
+  accountCount: number;
+  totalTransactionsCount: number;
+  incomeCount: number;
+  expenseCount: number;
+  dailyAvgExpense: number;
+  avgExpensePerTx: number;
+  expenseToIncomeRatio: number;
+  largestExpense: {
+    description: string;
+    amount: number;
+  } | null;
+  topExpenseCategories: CategoryStatItem[];
+  totalSavingsTarget: number;
+  totalSavingsCurrent: number;
+  savingsProgressRate: number;
+}
+
+export async function getFinanceSummary(userId: string): Promise<FinanceSummary> {
   const accounts = await getUserAccounts(userId);
   const totalBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
@@ -105,11 +140,16 @@ export async function getFinanceSummary(userId: string) {
   const [allTx, savings] = await Promise.all([
     db
       .select({
+        id: financeTransactions.id,
         type: financeTransactions.type,
         amount: financeTransactions.amount,
+        description: financeTransactions.description,
         transactionDate: financeTransactions.transactionDate,
+        categoryId: financeTransactions.categoryId,
+        categoryName: financeCategories.name,
       })
       .from(financeTransactions)
+      .leftJoin(financeCategories, eq(financeTransactions.categoryId, financeCategories.id))
       .where(
         and(
           eq(financeTransactions.userId, userId),
@@ -131,6 +171,11 @@ export async function getFinanceSummary(userId: string) {
   let monthlyExpense = 0;
   let allTimeIncome = 0;
   let allTimeExpense = 0;
+  let incomeCount = 0;
+  let expenseCount = 0;
+  let largestExpenseItem: { description: string; amount: number } | null = null;
+
+  const categoryMap = new Map<string, { total: number; count: number }>();
 
   allTx.forEach((tx) => {
     const amt = Number(tx.amount || 0);
@@ -138,14 +183,39 @@ export async function getFinanceSummary(userId: string) {
 
     if (tx.type === "income") {
       allTimeIncome += amt;
+      incomeCount++;
       if (date >= startOfMonth) monthlyIncome += amt;
       if (date >= startOfToday) todayIncome += amt;
     } else if (tx.type === "expense") {
       allTimeExpense += amt;
+      expenseCount++;
       if (date >= startOfMonth) monthlyExpense += amt;
       if (date >= startOfToday) todayExpense += amt;
+
+      if (!largestExpenseItem || amt > largestExpenseItem.amount) {
+        largestExpenseItem = {
+          description: tx.description || "Pengeluaran",
+          amount: amt,
+        };
+      }
+
+      const catName = tx.categoryName || "Lain-lain";
+      const existing = categoryMap.get(catName) || { total: 0, count: 0 };
+      categoryMap.set(catName, {
+        total: existing.total + amt,
+        count: existing.count + 1,
+      });
     }
   });
+
+  const topExpenseCategories: CategoryStatItem[] = Array.from(categoryMap.entries())
+    .map(([name, data]) => ({
+      name,
+      amount: data.total,
+      count: data.count,
+      percentage: allTimeExpense > 0 ? Math.round((data.total / allTimeExpense) * 100) : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
 
   let totalSavingsTarget = 0;
   let totalSavingsCurrent = 0;
@@ -163,6 +233,9 @@ export async function getFinanceSummary(userId: string) {
 
   const currentDay = Math.max(1, now.getDate());
   const dailyAvgExpense = Math.round(monthlyExpense / currentDay);
+  const avgExpensePerTx = expenseCount > 0 ? Math.round(allTimeExpense / expenseCount) : 0;
+  const expenseToIncomeRatio =
+    allTimeIncome > 0 ? Math.round((allTimeExpense / allTimeIncome) * 100) : 0;
 
   return {
     totalBalance,
@@ -177,7 +250,13 @@ export async function getFinanceSummary(userId: string) {
     allTimeNetSavings,
     accountCount: accounts.length,
     totalTransactionsCount: allTx.length,
+    incomeCount,
+    expenseCount,
     dailyAvgExpense,
+    avgExpensePerTx,
+    expenseToIncomeRatio,
+    largestExpense: largestExpenseItem,
+    topExpenseCategories,
     totalSavingsTarget,
     totalSavingsCurrent,
     savingsProgressRate,
