@@ -1,6 +1,10 @@
 import React from "react";
 import { requireUser } from "@/lib/auth/require-user";
-import { getUserReviews, getCurrentReview } from "@/modules/reviews/queries/reviews.queries";
+import {
+  getUserReviews,
+  getCurrentReview,
+  getLifeReviewStats,
+} from "@/modules/reviews/queries/reviews.queries";
 import { ReviewManager } from "@/modules/reviews/components/review-manager";
 
 export default async function ReviewsPage() {
@@ -22,9 +26,10 @@ export default async function ReviewsPage() {
     label: `Minggu ${Math.ceil(mon.getDate() / 7)}`,
   };
 
-  const [currentReview, pastReviews] = await Promise.all([
+  const [currentReview, pastReviews, overallStats] = await Promise.all([
     getCurrentReview(user.id, "weekly", periodStart, periodEnd),
     getUserReviews(user.id),
+    getLifeReviewStats(user.id),
   ]);
 
   return (
@@ -39,12 +44,29 @@ export default async function ReviewsPage() {
             Refleksi mingguan dan evaluasi terstruktur untuk menjaga keselarasan hidup Anda
           </p>
         </div>
+
+        {/* Quick Header Stats */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-0.5 sm:pb-0">
+          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs flex-shrink-0">
+            <span className="text-[var(--foreground-muted)]">Total Review:</span>
+            <span className="font-medium font-mono tabular-nums text-[var(--foreground)]">
+              {overallStats.totalReviews} sesi
+            </span>
+          </div>
+          <div className="h-8 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] flex items-center gap-2 text-xs flex-shrink-0">
+            <span className="text-[var(--foreground-muted)]">Tingkat Tugas:</span>
+            <span className="font-medium font-mono tabular-nums text-[var(--foreground)]">
+              {overallStats.tasks.completionRate}%
+            </span>
+          </div>
+        </div>
       </div>
 
       <ReviewManager
         currentReview={currentReview}
         pastReviews={pastReviews}
         currentPeriod={currentPeriod}
+        overallStats={overallStats}
       />
     </div>
   );

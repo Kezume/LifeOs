@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Plus, Wallet, ArrowDownRight, ArrowUpRight, Trash2, PiggyBank, Smartphone } from "lucide-react";
+import {
+  Plus,
+  Wallet,
+  ArrowDownRight,
+  ArrowUpRight,
+  Trash2,
+  PiggyBank,
+  Smartphone,
+  TrendingUp,
+  BarChart3,
+} from "lucide-react";
 import {
   createAccountAction,
   createTransactionAction,
@@ -54,9 +64,17 @@ interface FinanceSummary {
   monthlyExpense: number;
   todayIncome?: number;
   todayExpense?: number;
+  monthlyNetSavings?: number;
+  monthlySavingsRate?: number;
   allTimeIncome?: number;
   allTimeExpense?: number;
+  allTimeNetSavings?: number;
   accountCount?: number;
+  totalTransactionsCount?: number;
+  dailyAvgExpense?: number;
+  totalSavingsTarget?: number;
+  totalSavingsCurrent?: number;
+  savingsProgressRate?: number;
 }
 
 export function FinanceManager({
@@ -247,38 +265,119 @@ export function FinanceManager({
         </div>
       </div>
 
-      {/* 3 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      {/* 4 Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)]">
           <div className="text-xs text-[var(--foreground-muted)]">Total Saldo Bersih</div>
           <div className={`text-xl font-medium tracking-tight mt-2 tabular-nums ${summary.totalBalance < 0 ? "text-[var(--danger)]" : "text-[var(--foreground)]"}`}>
             {formatIDR(summary.totalBalance)}
           </div>
-          <div className="text-[11px] text-[var(--foreground-muted)] mt-1">
+          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate">
             Dari {accounts.length} akun terdaftar
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-            <span>{incomeTitle}</span>
-            <ArrowDownRight className="w-3.5 h-3.5 text-[var(--success)]" />
+            <span className="truncate">{incomeTitle}</span>
+            <ArrowDownRight className="w-3.5 h-3.5 text-[var(--success)] flex-shrink-0" />
           </div>
           <div className="text-xl font-medium tracking-tight text-[var(--success)] mt-2 tabular-nums">
             {formatIDR(incomeValue)}
           </div>
-          <div className="text-[11px] text-[var(--foreground-muted)] mt-1">{incomeSub}</div>
+          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate">{incomeSub}</div>
         </div>
 
         <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-            <span>{expenseTitle}</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[var(--danger)]" />
+            <span className="truncate">{expenseTitle}</span>
+            <ArrowUpRight className="w-3.5 h-3.5 text-[var(--danger)] flex-shrink-0" />
           </div>
           <div className="text-xl font-medium tracking-tight text-[var(--foreground)] mt-2 tabular-nums">
             {formatIDR(expenseValue)}
           </div>
-          <div className="text-[11px] text-[var(--foreground-muted)] mt-1">{expenseSub}</div>
+          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate">
+            {summary.dailyAvgExpense ? `Rata-rata: ${formatIDR(summary.dailyAvgExpense)}/hari` : expenseSub}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+            <span className="truncate">Arus Kas Bersih</span>
+            <TrendingUp className={`w-3.5 h-3.5 flex-shrink-0 ${incomeValue - expenseValue >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}`} />
+          </div>
+          <div className={`text-xl font-medium tracking-tight mt-2 tabular-nums ${incomeValue - expenseValue >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
+            {incomeValue - expenseValue >= 0 ? "+" : ""}{formatIDR(incomeValue - expenseValue)}
+          </div>
+          <div className="text-[11px] text-[var(--foreground-muted)] mt-1 truncate">
+            {periodView === "monthly" && summary.monthlySavingsRate !== undefined
+              ? `${summary.monthlySavingsRate}% rasio tabungan`
+              : incomeValue - expenseValue >= 0
+              ? "Surplus cashflow"
+              : "Defisit cashflow"}
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Health & Statistics Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* Stat 1: Savings Goal Progress */}
+        <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2">
+          <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+            <span className="flex items-center gap-1.5 font-medium text-[var(--foreground)]">
+              <PiggyBank className="w-3.5 h-3.5 text-amber-500" />
+              Progres Dana Tabungan
+            </span>
+            <span className="font-mono text-[11px] font-medium text-[var(--foreground)]">
+              {summary.savingsProgressRate || 0}%
+            </span>
+          </div>
+          <div className="w-full bg-[var(--surface-raised)] h-1.5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--foreground)] transition-all rounded-full"
+              style={{ width: `${summary.savingsProgressRate || 0}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[11px] font-mono text-[var(--foreground-muted)]">
+            <span>{formatIDR(summary.totalSavingsCurrent || 0)} terkumpul</span>
+            <span>Target: {formatIDR(summary.totalSavingsTarget || 0)}</span>
+          </div>
+        </div>
+
+        {/* Stat 2: Daily Burn Rate */}
+        <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2">
+          <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+            <span className="flex items-center gap-1.5 font-medium text-[var(--foreground)]">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+              Kecepatan Belanja Harian
+            </span>
+            <span className="font-mono text-[10px] text-[var(--foreground-muted)]">Bulan Ini</span>
+          </div>
+          <div className="text-xl font-medium tracking-tight text-[var(--foreground)] tabular-nums">
+            {formatIDR(summary.dailyAvgExpense || 0)}
+            <span className="text-xs text-[var(--foreground-muted)] font-normal ml-1">/ hari</span>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)]">
+            Estimasi laju belanja harian untuk menjaga stabilitas anggaran
+          </p>
+        </div>
+
+        {/* Stat 3: Transaction Volume & Active Accounts */}
+        <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-2">
+          <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+            <span className="flex items-center gap-1.5 font-medium text-[var(--foreground)]">
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-500" />
+              Volume Transaksi & Akun
+            </span>
+            <span className="font-mono text-[10px] text-[var(--foreground-muted)]">{accounts.length} Akun</span>
+          </div>
+          <div className="text-xl font-medium tracking-tight text-[var(--foreground)] tabular-nums">
+            {summary.totalTransactionsCount || transactions.length}
+            <span className="text-xs text-[var(--foreground-muted)] font-normal ml-1">transaksi tercatat</span>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)]">
+            Sinkronisasi otomatis melalui input manual, WhatsApp bot, & struk OCR
+          </p>
         </div>
       </div>
 

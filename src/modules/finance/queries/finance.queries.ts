@@ -102,19 +102,28 @@ export async function getFinanceSummary(userId: string) {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
-  const allTx = await db
-    .select({
-      type: financeTransactions.type,
-      amount: financeTransactions.amount,
-      transactionDate: financeTransactions.transactionDate,
-    })
-    .from(financeTransactions)
-    .where(
-      and(
-        eq(financeTransactions.userId, userId),
-        sql`${financeTransactions.voidedAt} is null`
-      )
-    );
+  const [allTx, savings] = await Promise.all([
+    db
+      .select({
+        type: financeTransactions.type,
+        amount: financeTransactions.amount,
+        transactionDate: financeTransactions.transactionDate,
+      })
+      .from(financeTransactions)
+      .where(
+        and(
+          eq(financeTransactions.userId, userId),
+          sql`${financeTransactions.voidedAt} is null`
+        )
+      ),
+    db
+      .select({
+        targetAmount: savingsGoals.targetAmount,
+        currentAmount: savingsGoals.currentAmount,
+      })
+      .from(savingsGoals)
+      .where(eq(savingsGoals.userId, userId)),
+  ]);
 
   let todayIncome = 0;
   let todayExpense = 0;
@@ -138,14 +147,39 @@ export async function getFinanceSummary(userId: string) {
     }
   });
 
+  let totalSavingsTarget = 0;
+  let totalSavingsCurrent = 0;
+  savings.forEach((s) => {
+    totalSavingsTarget += Number(s.targetAmount || 0);
+    totalSavingsCurrent += Number(s.currentAmount || 0);
+  });
+  const savingsProgressRate =
+    totalSavingsTarget > 0 ? Math.min(100, Math.round((totalSavingsCurrent / totalSavingsTarget) * 100)) : 0;
+
+  const monthlyNetSavings = monthlyIncome - monthlyExpense;
+  const monthlySavingsRate =
+    monthlyIncome > 0 ? Math.max(0, Math.round((monthlyNetSavings / monthlyIncome) * 100)) : 0;
+  const allTimeNetSavings = allTimeIncome - allTimeExpense;
+
+  const currentDay = Math.max(1, now.getDate());
+  const dailyAvgExpense = Math.round(monthlyExpense / currentDay);
+
   return {
     totalBalance,
     todayIncome,
     todayExpense,
     monthlyIncome,
     monthlyExpense,
+    monthlyNetSavings,
+    monthlySavingsRate,
     allTimeIncome,
     allTimeExpense,
+    allTimeNetSavings,
     accountCount: accounts.length,
+    totalTransactionsCount: allTx.length,
+    dailyAvgExpense,
+    totalSavingsTarget,
+    totalSavingsCurrent,
+    savingsProgressRate,
   };
 }
