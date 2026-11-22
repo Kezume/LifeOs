@@ -115,6 +115,18 @@ export async function deleteTransactionAction(txId: string) {
   return { success: true };
 }
 
+export async function deleteAllTransactionsAction() {
+  const user = await requireUser();
+
+  await db
+    .delete(financeTransactions)
+    .where(eq(financeTransactions.userId, user.id));
+
+  revalidatePath("/finance");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export async function createSavingsGoalAction(data: CreateSavingsGoalInput) {
   const user = await requireUser();
   const parsed = createSavingsGoalSchema.parse(data);

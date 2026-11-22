@@ -33,6 +33,7 @@ import {
   withdrawFromSavingsGoalAction,
   deleteSavingsGoalAction,
   deleteTransactionAction,
+  deleteAllTransactionsAction,
 } from "../actions/finance.actions";
 import { WhatsAppSyncCard } from "./whatsapp-sync-card";
 import { UserWhatsappConnection } from "@/lib/db/schema";
@@ -279,6 +280,13 @@ export function FinanceManager({
   const handleDeleteTx = (id: string) => {
     startTransition(async () => {
       await deleteTransactionAction(id);
+    });
+  };
+
+  const handleDeleteAllTx = () => {
+    if (!confirm("Apakah Anda yakin ingin menghapus SEMUA data riwayat transaksi? Tindakan ini permanen dan tidak dapat dibatalkan.")) return;
+    startTransition(async () => {
+      await deleteAllTransactionsAction();
     });
   };
 
@@ -1339,6 +1347,25 @@ export function FinanceManager({
       {/* Tab 2: Transactions List */}
       {activeTab === "transactions" && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between pb-1">
+            <span className="text-xs font-mono text-[var(--foreground-muted)]">
+              {displayedTransactions.length > 0
+                ? `${displayedTransactions.length} transaksi tercatat`
+                : "0 transaksi"}
+            </span>
+            {displayedTransactions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteAllTx}
+                disabled={isPending}
+                className="px-2.5 py-1 text-[11px] rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 font-medium cursor-pointer flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Hapus Semua Transaksi</span>
+              </button>
+            )}
+          </div>
+
           {displayedTransactions.length === 0 ? (
             <div className="py-12 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-raised)]/30 text-xs text-[var(--foreground-muted)]">
               {periodView === "daily" && "Belum ada transaksi yang dicatat untuk hari ini."}
