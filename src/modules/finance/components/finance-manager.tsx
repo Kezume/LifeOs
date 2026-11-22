@@ -11,6 +11,7 @@ import {
   Smartphone,
   TrendingUp,
   BarChart3,
+  PieChart,
 } from "lucide-react";
 import {
   createAccountAction,
@@ -20,6 +21,7 @@ import {
 } from "../actions/finance.actions";
 import { WhatsAppSyncCard } from "./whatsapp-sync-card";
 import { UserWhatsappConnection } from "@/lib/db/schema";
+import { DonutChart, DonutSegment } from "@/components/ui/donut-chart";
 
 interface AccountItem {
   id: string;
@@ -221,6 +223,22 @@ export function FinanceManager({
     return true; // all_time
   });
 
+  const accountSegments: DonutSegment[] = accounts
+    .filter((a) => a.currentBalance > 0)
+    .map((acc, idx) => ({
+      name: acc.name,
+      value: acc.currentBalance,
+      color: [
+        "var(--domain-finance)",
+        "var(--domain-work)",
+        "var(--domain-learning)",
+        "var(--domain-goals)",
+        "var(--domain-life)",
+        "var(--domain-knowledge)",
+      ][idx % 6],
+      formattedValue: formatIDR(acc.currentBalance),
+    }));
+
   return (
     <div className="space-y-6 select-none">
       {/* Period View Switcher */}
@@ -378,6 +396,64 @@ export function FinanceManager({
           <p className="text-[11px] text-[var(--foreground-muted)]">
             Sinkronisasi otomatis melalui input manual, WhatsApp bot, & struk OCR
           </p>
+        </div>
+      </div>
+
+      {/* Donut Chart: Financial Allocation & Statistics */}
+      <div className="p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="space-y-2 max-w-sm w-full">
+          <div className="flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
+            <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+              Statistik Distribusi Saldo & Alokasi
+            </h3>
+          </div>
+          <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
+            Visualisasi proporsi kekayaan di seluruh rekening, dompet digital, dan pos alokasi dana Anda.
+          </p>
+          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs font-mono">
+            <span className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground-muted)]">
+              {accounts.length} Akun Terdaftar
+            </span>
+            {summary.monthlySavingsRate !== undefined && (
+              <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-medium">
+                {summary.monthlySavingsRate}% Rasio Tabungan
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="w-full lg:w-auto flex justify-center">
+          <DonutChart
+            segments={
+              accountSegments.length > 0
+                ? accountSegments
+                : [
+                    {
+                      name: "Pengeluaran",
+                      value: expenseValue > 0 ? expenseValue : 1,
+                      color: "var(--danger)",
+                      formattedValue: formatIDR(expenseValue),
+                    },
+                    {
+                      name: "Tabungan Bersih",
+                      value: Math.max(1, incomeValue - expenseValue),
+                      color: "var(--success)",
+                      formattedValue: formatIDR(Math.max(0, incomeValue - expenseValue)),
+                    },
+                  ]
+            }
+            centerLabel={
+              accountSegments.length > 0
+                ? formatIDR(summary.totalBalance).replace(/(\.00|,00)$/, "")
+                : `${summary.monthlySavingsRate || 0}%`
+            }
+            centerSublabel={accountSegments.length > 0 ? "Total Saldo" : "Tabungan"}
+            size={160}
+            strokeWidth={16}
+            showLegend={true}
+            legendPosition="right"
+          />
         </div>
       </div>
 

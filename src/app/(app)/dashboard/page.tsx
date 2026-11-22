@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Plus, Award, CheckCircle2, History, Zap, ShieldCheck } from "lucide-react";
+import { Plus, Award, CheckCircle2, History, Zap, ShieldCheck, PieChart } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { getTaskStats, getUserTasks } from "@/modules/tasks/queries/task.queries";
 import { getProjectStats } from "@/modules/projects/queries/project.queries";
@@ -11,6 +11,7 @@ import { getFinanceSummary } from "@/modules/finance/queries/finance.queries";
 import { getGoalStats } from "@/modules/goals/queries/goals.queries";
 import { getGamificationProfile } from "@/modules/gamification/queries/gamification.queries";
 import { DashboardFocus } from "@/modules/tasks/components/dashboard-focus";
+import { DonutChart, DonutSegment } from "@/components/ui/donut-chart";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -123,6 +124,39 @@ export default async function DashboardPage() {
       month: "short",
     }).format(new Date(date));
   };
+
+  const ecosystemSegments: DonutSegment[] = [
+    {
+      name: "Tugas & Rutinitas",
+      value: Math.max(1, taskStats.total + routineStats.total),
+      color: "var(--domain-life)",
+      formattedValue: `${taskStats.completed} selesai`,
+    },
+    {
+      name: "Proyek Kerja",
+      value: Math.max(1, projectStats.total),
+      color: "var(--domain-work)",
+      formattedValue: `${projectStats.active} aktif`,
+    },
+    {
+      name: "Belajar & Skill",
+      value: Math.max(1, Math.round(learningStats.totalHours * 2) || 1),
+      color: "var(--domain-learning)",
+      formattedValue: `${learningStats.totalHours} jam`,
+    },
+    {
+      name: "Second Brain",
+      value: Math.max(1, knowledgeStats.totalNotes + knowledgeStats.inboxCount),
+      color: "var(--domain-knowledge)",
+      formattedValue: `${knowledgeStats.totalNotes} catatan`,
+    },
+    {
+      name: "Target Hidup",
+      value: Math.max(1, goalStats.total),
+      color: "var(--domain-goals)",
+      formattedValue: `${goalStats.active} target`,
+    },
+  ];
 
   return (
     <div className="space-y-6 select-none">
@@ -321,6 +355,31 @@ export default async function DashboardPage() {
 
         {/* Right 1 Column: Life Domains & Quick Navigation */}
         <div className="space-y-5">
+          {/* Ecosystem Balance Donut Chart Card */}
+          <div className="rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
+                <h2 className="text-xs font-medium text-[var(--foreground)]">
+                  Keseimbangan Ekosistem
+                </h2>
+              </div>
+              <span className="text-xs font-mono text-[var(--foreground-muted)]">
+                LifeOS Index
+              </span>
+            </div>
+
+            <DonutChart
+              segments={ecosystemSegments}
+              centerLabel={`Lvl ${gamification.level}`}
+              centerSublabel={`${gamification.totalXp} XP`}
+              size={140}
+              strokeWidth={14}
+              showLegend={true}
+              legendPosition="right"
+            />
+          </div>
+
           {/* Life Domains Card */}
           <div className="rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] p-5">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">

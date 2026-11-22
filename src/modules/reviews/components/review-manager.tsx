@@ -14,9 +14,11 @@ import {
   BarChart3,
   ListTodo,
   TrendingUp,
+  PieChart,
 } from "lucide-react";
 import { saveReviewAction } from "../actions/reviews.actions";
 import { LifeReviewOverallStats } from "../queries/reviews.queries";
+import { DonutChart, DonutSegment } from "@/components/ui/donut-chart";
 
 interface ReviewItem {
   id: string;
@@ -68,6 +70,39 @@ export function ReviewManager({
       setTimeout(() => setSavedSuccess(false), 3000);
     });
   };
+
+  const reviewDonutSegments: DonutSegment[] = [
+    {
+      name: "Tugas Tuntas",
+      value: Math.max(1, overallStats.tasks.completed),
+      color: "var(--domain-life)",
+      formattedValue: `${overallStats.tasks.completed} tugas`,
+    },
+    {
+      name: "Habit Streak",
+      value: Math.max(1, overallStats.routines.streakDays),
+      color: "var(--warning)",
+      formattedValue: `${overallStats.routines.streakDays} hari`,
+    },
+    {
+      name: "Waktu Belajar",
+      value: Math.max(1, Math.round(overallStats.learning.totalHours * 2) || 1),
+      color: "var(--domain-learning)",
+      formattedValue: `${overallStats.learning.totalHours} jam`,
+    },
+    {
+      name: "Target Tercapai",
+      value: Math.max(1, overallStats.goals.completed),
+      color: "var(--domain-goals)",
+      formattedValue: `${overallStats.goals.completed} target`,
+    },
+    {
+      name: "Proyek Selesai",
+      value: Math.max(1, overallStats.projects.completed),
+      color: "var(--domain-work)",
+      formattedValue: `${overallStats.projects.completed} proyek`,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -147,7 +182,43 @@ export function ReviewManager({
         </div>
       </div>
 
-      {/* 2. Level & Overall Progression Banner */}
+      {/* 2. Donut Chart: Overall Life Balance & Execution */}
+      <div className="p-5 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="space-y-2 max-w-sm w-full">
+          <div className="flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-[var(--foreground)]" strokeWidth={1.5} />
+            <h3 className="text-xs font-semibold text-[var(--foreground)] tracking-tight">
+              Distribusi Keseimbangan Hidup
+            </h3>
+          </div>
+          <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
+            Visualisasi keseimbangan antara eksekusi tugas, kedisiplinan rutinitas harian, jam belajar, dan capaian target hidup.
+          </p>
+          <div className="pt-2 flex items-center gap-3 text-xs font-mono text-[var(--foreground-muted)]">
+            <span className="px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)]">
+              {overallStats.totalReviews} Sesi Review
+            </span>
+            <span>·</span>
+            <span className="text-[var(--foreground)] font-medium">
+              {overallStats.tasks.completionRate}% Tingkat Tugas
+            </span>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-auto flex justify-center">
+          <DonutChart
+            segments={reviewDonutSegments}
+            centerLabel={`${overallStats.tasks.completionRate}%`}
+            centerSublabel="Tingkat Sukses"
+            size={160}
+            strokeWidth={16}
+            showLegend={true}
+            legendPosition="right"
+          />
+        </div>
+      </div>
+
+      {/* 3. Level & Overall Progression Banner */}
       <div className="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center font-bold text-xs text-[var(--foreground)]">
