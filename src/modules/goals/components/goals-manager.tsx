@@ -272,8 +272,8 @@ export function GoalsManager({ goals }: { goals: GoalItem[] }) {
 
                   {/* Progress & Milestone summary */}
                   <div className="space-y-1.5 pt-1 border-t border-[var(--border)]">
-                    <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-                      <div className="flex items-center gap-2 text-[11px] font-mono">
+                    <div className="flex items-center justify-between gap-2 text-xs text-[var(--foreground-muted)]">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px] font-mono">
                         <span>{goal.milestones.length} milestone</span>
                         {goal.targetDate && (
                           <>

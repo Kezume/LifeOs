@@ -140,29 +140,29 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-1 sm:pb-0 sm:flex-wrap">
           <Link
             href="/tasks"
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer flex-shrink-0"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
             <span>Tugas Baru</span>
           </Link>
           <Link
             href="/finance"
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-shrink-0"
           >
             <span>Keuangan</span>
           </Link>
           <Link
             href="/goals"
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-shrink-0"
           >
             <span>Target Hidup</span>
           </Link>
           <Link
             href="/reviews"
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-shrink-0"
           >
             <span>Life Review</span>
           </Link>

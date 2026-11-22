@@ -334,11 +334,11 @@ export function FinanceManager({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {accounts.length > 0 && (
             <button
               onClick={() => setIsAddingTx(!isAddingTx)}
-              className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer"
+              className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer flex-1 sm:flex-none"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
               <span>Catat Transaksi</span>
@@ -347,7 +347,7 @@ export function FinanceManager({
 
           <button
             onClick={() => setIsAddingAccount(!isAddingAccount)}
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer"
+            className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors cursor-pointer flex-1 sm:flex-none"
           >
             <Wallet className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
             <span>Tambah Akun</span>
@@ -600,11 +600,11 @@ export function FinanceManager({
                       return (
                         <div
                           key={tx.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] text-xs hover:border-[var(--border-active)] transition-colors"
+                          className="flex items-center justify-between p-3 rounded-lg bg-[var(--surface-card)] border border-[var(--border)] shadow-[var(--shadow-card)] text-xs hover:border-[var(--border-active)] transition-colors gap-2"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                             <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                 isIncome
                                   ? "bg-[var(--success)]/10 text-[var(--success)]"
                                   : "bg-[var(--danger)]/10 text-[var(--danger)]"
@@ -612,23 +612,23 @@ export function FinanceManager({
                             >
                               {isIncome ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-medium text-[var(--foreground)]">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-medium text-[var(--foreground)] truncate">
                                   {tx.description || (isIncome ? "Pemasukan" : "Pengeluaran")}
                                 </p>
                                 {tx.source === "whatsapp_text" && (
-                                  <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                                  <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)] flex-shrink-0">
                                     WhatsApp
                                   </span>
                                 )}
                                 {tx.source === "whatsapp_receipt" && (
-                                  <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                                  <span className="px-1.5 py-0.2 text-[10px] font-mono rounded bg-[var(--surface-raised)] text-[var(--foreground-muted)] border border-[var(--border)] flex-shrink-0">
                                     Struk OCR
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--foreground-muted)] mt-0.5">
+                              <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--foreground-muted)] mt-0.5 truncate">
                                 <span>{tx.accountName}</span>
                                 <span>·</span>
                                 <span>
@@ -641,9 +641,9 @@ export function FinanceManager({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-1">
                             <span
-                              className={`font-mono font-medium tabular-nums ${
+                              className={`font-mono font-medium tabular-nums whitespace-nowrap ${
                                 isIncome ? "text-[var(--success)]" : "text-[var(--foreground)]"
                               }`}
                             >

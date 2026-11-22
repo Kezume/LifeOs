@@ -104,7 +104,7 @@ export function TaskManager({
 
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer"
+          className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer w-full sm:w-auto"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
           <span>Tambah Tugas</span>
@@ -127,12 +127,12 @@ export function TaskManager({
             className="w-full h-9 px-3 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:border-[var(--border-active)] transition-colors"
           />
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {/* Priority Selector */}
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high" | "urgent")}
-              className="h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
+              className="h-9 sm:h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
             >
               <option value="low">Prioritas Rendah</option>
               <option value="medium">Prioritas Sedang</option>
@@ -141,45 +141,43 @@ export function TaskManager({
             </select>
 
             {/* Project Selector */}
-            {projects.length > 0 && (
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
-              >
-                <option value="">Tanpa Proyek</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="h-9 sm:h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
+            >
+              <option value="">Tanpa Proyek</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
 
             {/* Due Date */}
             <input
               type="datetime-local"
               value={dueAt}
               onChange={(e) => setDueAt(e.target.value)}
-              className="h-8 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+              className="h-9 sm:h-8 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
             />
+          </div>
 
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsAdding(false)}
-                className="h-8 px-3 text-xs rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isPending || !title.trim()}
-                className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Simpan
-              </button>
-            </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsAdding(false)}
+              className="h-8 px-3 text-xs rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !title.trim()}
+              className="h-8 px-4 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              Simpan
+            </button>
           </div>
         </form>
       )}
@@ -228,7 +226,7 @@ export function TaskManager({
                     >
                       {task.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--foreground-muted)] font-mono">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5 text-[11px] text-[var(--foreground-muted)] font-mono">
                       {task.projectName && (
                         <span className="px-1.5 py-0.2 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[10px]">
                           {task.projectName}
@@ -267,7 +265,7 @@ export function TaskManager({
                 <button
                   onClick={() => handleDelete(task.id)}
                   title="Hapus Tugas"
-                  className="p-1.5 text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:bg-[var(--surface-raised)] rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  className="p-1.5 text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:bg-[var(--surface-raised)] rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer flex-shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
                 </button>

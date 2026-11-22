@@ -141,7 +141,7 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
 
         <button
           onClick={() => setIsAddingProject(!isAddingProject)}
-          className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer"
+          className="h-8 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors cursor-pointer w-full sm:w-auto"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
           <span>Buat Proyek</span>
@@ -172,11 +172,11 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
             className="w-full p-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:border-[var(--border-active)]"
           />
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-              className="h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
+              className="h-9 sm:h-8 px-2.5 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none cursor-pointer"
             >
               <option value="low">Prioritas Rendah</option>
               <option value="medium">Prioritas Sedang</option>
@@ -187,25 +187,25 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="h-8 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
+              className="h-9 sm:h-8 px-2 text-xs rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none"
             />
+          </div>
 
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsAddingProject(false)}
-                className="h-8 px-3 text-xs rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isPending || !name.trim()}
-                className="h-8 px-3.5 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Simpan Proyek
-              </button>
-            </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsAddingProject(false)}
+              className="h-8 px-3 text-xs rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !name.trim()}
+              className="h-8 px-4 text-xs font-medium rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              Simpan Proyek
+            </button>
           </div>
         </form>
       )}
@@ -272,8 +272,8 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
 
                   {/* Progress Bar & Details */}
                   <div className="space-y-1.5 pt-1 border-t border-[var(--border)]">
-                    <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-                      <div className="flex items-center gap-3 text-[11px] font-mono">
+                    <div className="flex items-center justify-between gap-2 text-xs text-[var(--foreground-muted)]">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] sm:text-[11px] font-mono">
                         <span>
                           {project.completedTaskCount} / {project.taskCount} tugas selesai
                         </span>
@@ -290,7 +290,7 @@ export function ProjectManager({ projects }: { projects: ProjectItem[] }) {
                         )}
                       </div>
 
-                      <span className="font-mono font-medium text-[var(--foreground)]">
+                      <span className="font-mono font-medium text-[var(--foreground)] flex-shrink-0">
                         {project.progress}%
                       </span>
                     </div>

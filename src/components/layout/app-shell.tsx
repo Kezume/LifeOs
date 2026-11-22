@@ -93,15 +93,15 @@ export function AppShell({ children, levelInfo }: AppShellProps) {
           onOpenCapture={() => setIsCaptureOpen(true)}
         />
 
-        <main className="flex-1 p-3.5 sm:p-6 md:p-8 pb-24 md:pb-8 overflow-y-auto">
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8 overflow-y-auto">
           <div className="max-w-6xl mx-auto w-full">
             {children}
           </div>
         </main>
       </div>
 
-      {/* 4. Mobile Bottom Navigation Bar (thumb-friendly for phones) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[var(--surface-deep)]/95 backdrop-blur-md border-t border-[var(--border)] px-2 flex items-center justify-around select-none">
+      {/* 4. Mobile Bottom Navigation Bar (thumb-friendly for phones with safe-area support) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface-deep)]/95 backdrop-blur-md border-t border-[var(--border)] px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.4rem)] flex items-center justify-around select-none">
         <Link
           href="/dashboard"
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors ${
@@ -131,7 +131,7 @@ export function AppShell({ children, levelInfo }: AppShellProps) {
           type="button"
           onClick={() => setIsCaptureOpen(true)}
           title="Quick Capture"
-          className="w-10 h-10 -mt-3 rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] flex items-center justify-center shadow-lg border border-[var(--border)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          className="w-11 h-11 -mt-5 rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] flex items-center justify-center shadow-lg border border-[var(--border)] active:scale-95 transition-all cursor-pointer"
         >
           <Plus className="w-5 h-5" strokeWidth={2} />
         </button>

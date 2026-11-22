@@ -310,7 +310,7 @@ export function WhatsAppSyncCard({ connection, accounts, onTransactionConfirmed 
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2">
               {connection?.pairingCode && (
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground-muted)]">
@@ -319,13 +319,13 @@ export function WhatsAppSyncCard({ connection, accounts, onTransactionConfirmed 
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {isConnected && (
                 <button
                   type="button"
                   disabled={isPending}
                   onClick={handleDisconnect}
-                  className="px-3 py-1.5 text-xs text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                  className="h-8 px-3 text-xs text-red-500 hover:text-red-600 transition-colors cursor-pointer flex-1 sm:flex-none"
                 >
                   Putuskan
                 </button>
@@ -333,7 +333,7 @@ export function WhatsAppSyncCard({ connection, accounts, onTransactionConfirmed 
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-1.5 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                className="h-8 px-4 rounded-lg bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] text-xs font-medium hover:bg-[var(--btn-primary-hover)] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer flex-1 sm:flex-none"
               >
                 {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>{isConnected ? "Simpan Perubahan" : "Hubungkan WhatsApp"}</span>

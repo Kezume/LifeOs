@@ -146,3 +146,24 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--foreground-muted);
 }
+
+/* Mobile & Touch Optimizations */
+html, body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* Prevent auto-zooming on focus in iOS Safari (< 16px triggers zoom) */
+@media (max-width: 639px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

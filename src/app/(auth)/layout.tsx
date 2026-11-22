@@ -17,7 +17,7 @@ export default function AuthLayout({
   ];
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[var(--background)]">
+    <div className="min-h-screen w-full flex bg-[var(--background)]">
       {/* Left Column: Brand Showcase with Obsidian Black Theme (Desktop only) */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-7/12 bg-[#09090b] border-r border-white/10 p-8 xl:p-12 2xl:p-16 flex-col justify-between select-none h-full">
         <div>

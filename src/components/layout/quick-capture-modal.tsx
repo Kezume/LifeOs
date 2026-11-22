@@ -205,8 +205,13 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-[2px]">
-      <div className="w-full max-w-lg max-h-[92vh] bg-[var(--surface-raised)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-[2px]">
+      <div className="w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] bg-[var(--surface-raised)] border-t sm:border border-[var(--border)] rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+        {/* Mobile Pull Handle */}
+        <div className="sm:hidden pt-2 pb-1 flex justify-center bg-[var(--surface-deep)]">
+          <div className="w-10 h-1 rounded-full bg-[var(--border-active)]" />
+        </div>
+
         {/* Header */}
         <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-deep)] flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -217,7 +222,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] rounded transition-colors"
+            className="p-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] rounded transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -233,7 +238,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveType(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors whitespace-nowrap cursor-pointer flex-shrink-0 ${
                   isCurrent
                     ? "bg-[var(--surface-raised)] text-[var(--foreground)] border-t border-x border-[var(--border)] -mb-px"
                     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -247,7 +252,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
         </div>
 
         {/* Body Form */}
-        <div className="p-4 space-y-3.5 min-h-[170px]">
+        <div className="p-4 space-y-3.5 overflow-y-auto max-h-[calc(90vh-140px)] sm:max-h-none flex-1">
           {activeType === "task" && (
             <>
               <div>
@@ -437,7 +442,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 bg-[var(--surface-deep)] border-t border-[var(--border)] flex items-center justify-between">
+        <div className="px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pb-3 bg-[var(--surface-deep)] border-t border-[var(--border)] flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 text-[10px] text-[var(--foreground-muted)]">
             {toastMessage ? (
               <span className="flex items-center gap-1.5 text-emerald-500 font-medium">
@@ -445,14 +450,14 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
                 {toastMessage}
               </span>
             ) : (
-              <span>Press <kbd className="font-mono px-1 py-0.5 rounded bg-[var(--surface-card)] border border-[var(--border)]">⌘Enter</kbd> to save</span>
+              <span className="hidden sm:inline">Press <kbd className="font-mono px-1 py-0.5 rounded bg-[var(--surface-card)] border border-[var(--border)]">⌘Enter</kbd> to save</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="h-8 px-3 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -460,7 +465,7 @@ export function QuickCaptureModal({ isOpen, onClose }: QuickCaptureModalProps) {
               type="button"
               disabled={isPending}
               onClick={handleSubmit}
-              className="px-3.5 py-1.5 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 disabled:opacity-50"
+              className="h-8 px-4 rounded-lg bg-[var(--foreground)] text-[var(--background)] text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
               <span>Save</span>

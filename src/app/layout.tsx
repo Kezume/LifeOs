@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -13,6 +13,17 @@ export const metadata: Metadata = {
   description: "One Space. Every Aspect of Your Life.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#141415" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`h-full ${inter.variable}`}>
-      <body className="h-full font-sans antialiased bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--primary)]/20 selection:text-[var(--primary)]">
+      <body className="h-full font-sans antialiased bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--primary)]/20 selection:text-[var(--primary)] overscroll-none">
         {children}
       </body>
     </html>
